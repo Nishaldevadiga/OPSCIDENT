@@ -1,0 +1,22 @@
+Dear {{ user.first_name }},
+
+We regret to inform you that your insurance claim has been REJECTED.
+
+Claim Details:
+--------------
+Ticket ID: {{ ticket.ticket_id }}
+Title: {{ ticket.title }}
+Incident Type: {{ ticket.get_incident_type_display }}
+
+You can view the full details and reason for rejection by logging into your account.
+
+If you believe this decision was made in error or have additional information to support your claim, you have the following options:
+
+1. Appeal the Decision: Submit an appeal within 30 days with additional supporting documentation
+2. Contact Support: Speak with our claims team to understand the rejection reason
+3. File a New Claim: If circumstances have changed, you may file a new claim
+
+We understand this may not be the outcome you were hoping for. Our team is here to help you understand the decision and explore any available options.
+
+Best regards,
+Insurance Claims Team

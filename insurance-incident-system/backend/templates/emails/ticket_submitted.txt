@@ -1,0 +1,23 @@
+Dear {{ user.first_name }},
+
+Thank you for submitting your insurance claim. We have received your request and it is now being processed.
+
+Claim Details:
+--------------
+Ticket ID: {{ ticket.ticket_id }}
+Title: {{ ticket.title }}
+Incident Type: {{ ticket.get_incident_type_display }}
+Incident Date: {{ ticket.incident_date }}
+Submitted: {{ ticket.created_at|date:"F d, Y H:i" }}
+
+What happens next:
+1. Our AI system will analyze your submitted documents
+2. An agent will review your claim
+3. You will receive updates on your claim status via email
+
+You can track your claim status by logging into your account.
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+Insurance Claims Team

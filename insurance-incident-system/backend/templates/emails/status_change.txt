@@ -1,0 +1,20 @@
+Dear {{ user.first_name }},
+
+There has been an update to your insurance claim.
+
+Claim Details:
+--------------
+Ticket ID: {{ ticket.ticket_id }}
+Title: {{ ticket.title }}
+New Status: {{ status_display }}
+
+{% if ticket.status == 'processing' %}
+Your claim is currently being reviewed by our team. We will notify you once a decision has been made.
+{% elif ticket.status == 'pending_info' %}
+We require additional information to process your claim. Please log into your account to view the request and respond.
+{% endif %}
+
+You can view the full details of your claim by logging into your account.
+
+Best regards,
+Insurance Claims Team

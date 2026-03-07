@@ -1,0 +1,26 @@
+Dear {{ user.first_name }},
+
+We need additional information to process your insurance claim.
+
+Claim Details:
+--------------
+Ticket ID: {{ ticket.ticket_id }}
+Title: {{ ticket.title }}
+
+Message from Claims Agent:
+--------------------------
+{{ message }}
+
+Action Required:
+Please log into your account and respond to this request as soon as possible. Delayed responses may affect the processing time of your claim.
+
+To respond:
+1. Log into your account
+2. Go to "My Tickets"
+3. Select ticket {{ ticket.ticket_id }}
+4. Click "Respond" to submit your information
+
+If you have any questions, please contact our support team.
+
+Best regards,
+Insurance Claims Team

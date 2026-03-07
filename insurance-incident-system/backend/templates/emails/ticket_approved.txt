@@ -1,0 +1,22 @@
+Dear {{ user.first_name }},
+
+Great news! Your insurance claim has been APPROVED.
+
+Claim Details:
+--------------
+Ticket ID: {{ ticket.ticket_id }}
+Title: {{ ticket.title }}
+Incident Type: {{ ticket.get_incident_type_display }}
+{% if ticket.claim_amount %}Approved Amount: ${{ ticket.claim_amount }}{% endif %}
+
+What happens next:
+- Our finance team will process your payment
+- You will receive payment within 5-7 business days
+- A detailed statement will be sent to your registered email
+
+If you have any questions about your approved claim or payment, please contact our support team.
+
+Thank you for choosing our insurance services.
+
+Best regards,
+Insurance Claims Team
