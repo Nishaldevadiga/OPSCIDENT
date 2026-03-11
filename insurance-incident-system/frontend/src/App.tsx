@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
+import LandingOrLayout from './components/LandingOrLayout';
 import CustomerDashboard from './pages/customer/Dashboard';
 import CustomerTicketCreate from './pages/customer/TicketCreate';
 import CustomerTicketDetail from './pages/customer/TicketDetail';
@@ -39,12 +40,7 @@ function App() {
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
         } />
 
-        <Route path="/" element={
-          <ProtectedRoute allowedRoles={['customer']}>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<LandingOrLayout />}>
           <Route path="dashboard" element={<CustomerDashboard />} />
           <Route path="tickets/new" element={<CustomerTicketCreate />} />
           <Route path="tickets/:id" element={<CustomerTicketDetail />} />
@@ -60,7 +56,7 @@ function App() {
           <Route path="tickets/:id" element={<AgentTicketDetail />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

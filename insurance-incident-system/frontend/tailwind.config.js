@@ -23,8 +23,11 @@ export default {
       fontFamily: {
         sans: ['DM Sans', 'system-ui', 'sans-serif'],
       },
+      fontFamily: {
+        heading: ['Sora', 'system-ui', 'sans-serif'],
+      },
       boxShadow: {
-        'glow': '0 0 20px -5px rgb(16 185 129 / 0.3)',
+        'glow': '0 0 40px -10px rgb(16 185 129 / 0.35)',
         'card': '0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2)',
       },
     },

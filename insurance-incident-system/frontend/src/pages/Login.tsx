@@ -35,8 +35,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-950 py-12 px-4 sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-transparent to-primary-600/5" />
       <div className="relative max-w-md w-full space-y-8">
+        <Link to="/" className="inline-block text-sm text-slate-500 hover:text-slate-400 transition-colors mb-4">
+          ← Back to home
+        </Link>
         <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-slate-50">
+          <h2 className="mt-6 text-center text-3xl font-bold text-slate-50 font-heading">
             Opscident
           </h2>
           <p className="mt-2 text-center text-sm text-slate-400">
