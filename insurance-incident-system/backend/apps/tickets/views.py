@@ -73,4 +73,8 @@ class CustomerTicketViewSet(viewsets.ModelViewSet):
             reason='Customer responded to information request'
         )
 
+        # Re-run AI decision on existing evidence after customer response
+        from apps.ai_services.tasks import make_ai_decision
+        make_ai_decision.delay(ticket.id)
+
         return Response({"message": "Response submitted successfully"})

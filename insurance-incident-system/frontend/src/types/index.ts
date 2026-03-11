@@ -81,7 +81,7 @@ export interface AIAnalysis {
   extracted_data: Record<string, unknown>;
   damage_score?: number;
   fraud_indicators: string[];
-  recommendation: 'approve' | 'reject' | 'review';
+  recommendation: 'approve' | 'reject' | 'review' | 'need_info';
   confidence_score: number;
   analysis_summary: string;
   pdf_analysis_complete: boolean;
@@ -109,6 +109,9 @@ export interface PaginatedResponse<T> {
 export interface AgentStats {
   total: number;
   by_status: Record<string, number>;
-  pending_review: number;
+  needs_attention: number;
+  ai_processing: number;
+  auto_approved: number;
+  auto_rejected: number;
   total_claim_amount: number;
 }

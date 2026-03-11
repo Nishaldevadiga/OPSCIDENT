@@ -98,9 +98,10 @@ class TicketCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = [
-            'incident_type', 'title', 'description', 'incident_date',
+            'id', 'ticket_id', 'incident_type', 'title', 'description', 'incident_date',
             'incident_location', 'claim_amount'
         ]
+        read_only_fields = ['id', 'ticket_id']
 
     def create(self, validated_data):
         validated_data['customer'] = self.context['request'].user

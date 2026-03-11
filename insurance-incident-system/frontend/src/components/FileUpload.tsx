@@ -41,45 +41,43 @@ export default function FileUpload({ files, onFilesChange, maxFiles = 10, disabl
     <div className="space-y-4">
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
           isDragActive
-            ? 'border-primary-500 bg-primary-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-primary-500 bg-primary-500/10'
+            : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <input {...getInputProps()} />
-        <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
-        <p className="mt-2 text-sm text-gray-600">
-          {isDragActive
-            ? 'Drop the files here...'
-            : 'Drag & drop files here, or click to select'}
+        <CloudArrowUpIcon className="mx-auto h-12 w-12 text-slate-500" />
+        <p className="mt-2 text-sm text-slate-400">
+          {isDragActive ? 'Drop the files here...' : 'Drag & drop files here, or click to select'}
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-slate-500">
           PDF, JPEG, PNG up to 10MB each (max {maxFiles} files)
         </p>
       </div>
 
       {files.length > 0 && (
-        <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg">
+        <ul className="divide-y divide-slate-700 border border-slate-700 rounded-xl overflow-hidden">
           {files.map((file, index) => (
-            <li key={index} className="flex items-center justify-between py-3 px-4">
+            <li key={index} className="flex items-center justify-between py-3 px-4 bg-slate-800/50">
               <div className="flex items-center min-w-0">
-                <div className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center ${
-                  file.type === 'application/pdf' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                  file.type === 'application/pdf' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'
                 }`}>
                   <span className="text-xs font-medium uppercase">
                     {file.type === 'application/pdf' ? 'PDF' : 'IMG'}
                   </span>
                 </div>
                 <div className="ml-3 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                  <p className="text-sm font-medium text-slate-200 truncate">{file.name}</p>
+                  <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => removeFile(index)}
-                className="ml-4 text-gray-400 hover:text-red-500"
+                className="ml-4 text-slate-500 hover:text-rose-400 transition-colors"
                 disabled={disabled}
               >
                 <XMarkIcon className="h-5 w-5" />

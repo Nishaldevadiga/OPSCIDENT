@@ -12,6 +12,10 @@ import {
   DocumentTextIcon,
   PhotoIcon,
   ClockIcon,
+  CpuChipIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function CustomerTicketDetail() {
@@ -25,9 +29,7 @@ export default function CustomerTicketDetail() {
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      loadTicket();
-    }
+    if (id) loadTicket();
   }, [id]);
 
   const loadTicket = async () => {
@@ -46,14 +48,13 @@ export default function CustomerTicketDetail() {
   const handleRespond = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!responseText.trim()) return;
-
     setSubmitting(true);
     try {
       await ticketsApi.respond(parseInt(id!), responseText);
       toast.success('Response submitted successfully');
       setResponseText('');
       loadTicket();
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit response');
     } finally {
       setSubmitting(false);
@@ -62,17 +63,13 @@ export default function CustomerTicketDetail() {
 
   const handleUploadFiles = async () => {
     if (newFiles.length === 0) return;
-
     setUploadingFiles(true);
     try {
-      const uploadPromises = newFiles.map((file) =>
-        documentsApi.upload(parseInt(id!), file)
-      );
-      await Promise.all(uploadPromises);
+      await Promise.all(newFiles.map((file) => documentsApi.upload(parseInt(id!), file)));
       toast.success('Files uploaded successfully');
       setNewFiles([]);
       loadTicket();
-    } catch (error) {
+    } catch {
       toast.error('Failed to upload files');
     } finally {
       setUploadingFiles(false);
@@ -87,28 +84,31 @@ export default function CustomerTicketDetail() {
     );
   }
 
-  if (!ticket) {
-    return null;
-  }
+  if (!ticket) return null;
 
   const canUploadMore = !['approved', 'rejected'].includes(ticket.status);
 
+  const aiStatusStyles: Record<string, string> = {
+    approved: 'bg-emerald-500/10 border-emerald-500/30',
+    rejected: 'bg-rose-500/10 border-rose-500/30',
+    pending_info: 'bg-orange-500/10 border-orange-500/30',
+    default: 'bg-sky-500/10 border-sky-500/30',
+  };
+  const aiTextStyles: Record<string, string> = { approved: 'text-emerald-300', rejected: 'text-rose-300', pending_info: 'text-orange-300', default: 'text-sky-300' };
+
   return (
     <div className="max-w-4xl mx-auto">
-      <button
-        onClick={() => navigate('/dashboard')}
-        className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-      >
+      <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm text-slate-400 hover:text-slate-200 mb-4 transition-colors">
         <ArrowLeftIcon className="h-4 w-4 mr-1" />
         Back to Dashboard
       </button>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="card overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{ticket.ticket_id}</h1>
-              <p className="text-sm text-gray-500 mt-1">{ticket.title}</p>
+              <h1 className="text-xl font-bold text-slate-50">{ticket.ticket_id}</h1>
+              <p className="text-sm text-slate-400 mt-1">{ticket.title}</p>
             </div>
             <StatusBadge status={ticket.status} />
           </div>
@@ -116,66 +116,82 @@ export default function CustomerTicketDetail() {
 
         <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Incident Type</h3>
-            <p className="mt-1 text-sm text-gray-900 capitalize">
-              {ticket.incident_type.replace('_', ' ')}
-            </p>
+            <h3 className="text-sm font-medium text-slate-500">Incident Type</h3>
+            <p className="mt-1 text-sm text-slate-200 capitalize">{ticket.incident_type.replace('_', ' ')}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Incident Date</h3>
-            <p className="mt-1 text-sm text-gray-900">
-              {format(new Date(ticket.incident_date), 'MMMM d, yyyy')}
-            </p>
+            <h3 className="text-sm font-medium text-slate-500">Incident Date</h3>
+            <p className="mt-1 text-sm text-slate-200">{format(new Date(ticket.incident_date), 'MMMM d, yyyy')}</p>
           </div>
           {ticket.incident_location && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Location</h3>
-              <p className="mt-1 text-sm text-gray-900">{ticket.incident_location}</p>
+              <h3 className="text-sm font-medium text-slate-500">Location</h3>
+              <p className="mt-1 text-sm text-slate-200">{ticket.incident_location}</p>
             </div>
           )}
           {ticket.claim_amount && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Claim Amount</h3>
-              <p className="mt-1 text-sm text-gray-900">
-                ${ticket.claim_amount.toLocaleString()}
-              </p>
+              <h3 className="text-sm font-medium text-slate-500">Claim Amount</h3>
+              <p className="mt-1 text-sm text-slate-200">${ticket.claim_amount.toLocaleString()}</p>
             </div>
           )}
           <div className="md:col-span-2">
-            <h3 className="text-sm font-medium text-gray-500">Description</h3>
-            <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-              {ticket.description}
-            </p>
+            <h3 className="text-sm font-medium text-slate-500">Description</h3>
+            <p className="mt-1 text-sm text-slate-200 whitespace-pre-wrap">{ticket.description}</p>
           </div>
         </div>
 
+        {ticket.ai_analysis && (
+          <div className={`px-6 py-4 border-t border-slate-700 ${aiStatusStyles[ticket.status as keyof typeof aiStatusStyles] || aiStatusStyles.default}`}>
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mt-0.5">
+                {ticket.status === 'approved' ? <CheckCircleIcon className="h-6 w-6 text-emerald-400" /> :
+                 ticket.status === 'rejected' ? <XCircleIcon className="h-6 w-6 text-rose-400" /> :
+                 ticket.status === 'pending_info' ? <ExclamationTriangleIcon className="h-6 w-6 text-orange-400" /> :
+                 <CpuChipIcon className="h-6 w-6 text-sky-400" />}
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className={`text-sm font-medium ${aiTextStyles[ticket.status as keyof typeof aiTextStyles] || aiTextStyles.default}`}>
+                  {ticket.status === 'approved' ? 'Claim Approved' : ticket.status === 'rejected' ? 'Claim Rejected' :
+                   ticket.status === 'pending_info' ? 'Additional Information Required' : 'AI Processing'}
+                </h3>
+                <p className="mt-1 text-sm text-slate-300">
+                  {ticket.ai_analysis.analysis_summary || 'Your claim is being analyzed by our AI system.'}
+                </p>
+                {ticket.ai_analysis.confidence_score > 0 && (
+                  <p className="mt-1 text-xs text-slate-500">Confidence: {(ticket.ai_analysis.confidence_score * 100).toFixed(0)}%</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!ticket.ai_analysis && ['submitted', 'processing'].includes(ticket.status) && (
+          <div className="px-6 py-4 border-t border-slate-700 bg-sky-500/10">
+            <div className="flex items-center">
+              <CpuChipIcon className="h-6 w-6 text-sky-400 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-sky-300">AI Analysis in Progress</h3>
+                <p className="text-sm text-slate-400">Our AI is analyzing your documents. This usually takes a few moments.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {ticket.documents && ticket.documents.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Documents</h3>
-            <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg">
+          <div className="px-6 py-4 border-t border-slate-700">
+            <h3 className="text-sm font-medium text-slate-200 mb-3">Documents</h3>
+            <ul className="divide-y divide-slate-700 border border-slate-700 rounded-xl overflow-hidden">
               {ticket.documents.map((doc) => (
-                <li key={doc.id} className="flex items-center py-3 px-4">
-                  <div className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center ${
-                    doc.file_type === 'pdf' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                  }`}>
-                    {doc.file_type === 'pdf' ? (
-                      <DocumentTextIcon className="h-5 w-5" />
-                    ) : (
-                      <PhotoIcon className="h-5 w-5" />
-                    )}
+                <li key={doc.id} className="flex items-center py-3 px-4 bg-slate-800/30">
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${doc.file_type === 'pdf' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                    {doc.file_type === 'pdf' ? <DocumentTextIcon className="h-5 w-5" /> : <PhotoIcon className="h-5 w-5" />}
                   </div>
                   <div className="ml-3 flex-1">
-                    <p className="text-sm font-medium text-gray-900">{doc.original_filename}</p>
-                    <p className="text-xs text-gray-500">
-                      Uploaded {format(new Date(doc.uploaded_at), 'MMM d, yyyy')}
-                    </p>
+                    <p className="text-sm font-medium text-slate-200">{doc.original_filename}</p>
+                    <p className="text-xs text-slate-500">Uploaded {format(new Date(doc.uploaded_at), 'MMM d, yyyy')}</p>
                   </div>
-                  <a
-                    href={doc.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-600 hover:text-primary-500 text-sm font-medium"
-                  >
+                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:text-primary-300 text-sm font-medium">
                     View
                   </a>
                 </li>
@@ -185,24 +201,13 @@ export default function CustomerTicketDetail() {
         )}
 
         {canUploadMore && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Upload Additional Documents</h3>
+          <div className="px-6 py-4 border-t border-slate-700">
+            <h3 className="text-sm font-medium text-slate-200 mb-3">Upload Additional Documents</h3>
             <FileUpload files={newFiles} onFilesChange={setNewFiles} disabled={uploadingFiles} />
             {newFiles.length > 0 && (
               <div className="mt-4">
-                <button
-                  onClick={handleUploadFiles}
-                  disabled={uploadingFiles}
-                  className="btn-primary"
-                >
-                  {uploadingFiles ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      <span className="ml-2">Uploading...</span>
-                    </>
-                  ) : (
-                    'Upload Files'
-                  )}
+                <button onClick={handleUploadFiles} disabled={uploadingFiles} className="btn-primary">
+                  {uploadingFiles ? <><LoadingSpinner size="sm" /><span className="ml-2">Uploading...</span></> : 'Upload Files'}
                 </button>
               </div>
             )}
@@ -210,20 +215,16 @@ export default function CustomerTicketDetail() {
         )}
 
         {ticket.notes && ticket.notes.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Notes & Updates</h3>
+          <div className="px-6 py-4 border-t border-slate-700">
+            <h3 className="text-sm font-medium text-slate-200 mb-3">Notes & Updates</h3>
             <div className="space-y-4">
               {ticket.notes.map((note) => (
-                <div key={note.id} className="bg-gray-50 rounded-lg p-4">
+                <div key={note.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">
-                      {note.author_name}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
-                    </span>
+                    <span className="text-sm font-medium text-slate-200">{note.author_name}</span>
+                    <span className="text-xs text-slate-500">{format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}</span>
                   </div>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">{note.content}</p>
                 </div>
               ))}
             </div>
@@ -231,32 +232,13 @@ export default function CustomerTicketDetail() {
         )}
 
         {ticket.status === 'pending_info' && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-orange-50">
-            <h3 className="text-sm font-medium text-orange-800 mb-3">
-              Action Required: Additional Information Needed
-            </h3>
+          <div className="px-6 py-4 border-t border-slate-700 bg-orange-500/10">
+            <h3 className="text-sm font-medium text-orange-400 mb-3">Action Required: Additional Information Needed</h3>
             <form onSubmit={handleRespond}>
-              <textarea
-                rows={4}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                placeholder="Provide the requested information..."
-                value={responseText}
-                onChange={(e) => setResponseText(e.target.value)}
-              />
+              <textarea rows={4} className="input px-3 py-2" placeholder="Provide the requested information..." value={responseText} onChange={(e) => setResponseText(e.target.value)} />
               <div className="mt-3 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={submitting || !responseText.trim()}
-                  className="btn-primary"
-                >
-                  {submitting ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      <span className="ml-2">Submitting...</span>
-                    </>
-                  ) : (
-                    'Submit Response'
-                  )}
+                <button type="submit" disabled={submitting || !responseText.trim()} className="btn-primary">
+                  {submitting ? <><LoadingSpinner size="sm" /><span className="ml-2">Submitting...</span></> : 'Submit Response'}
                 </button>
               </div>
             </form>
@@ -264,49 +246,31 @@ export default function CustomerTicketDetail() {
         )}
 
         {ticket.status_history && ticket.status_history.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Status History</h3>
-            <div className="flow-root">
-              <ul className="-mb-8">
-                {ticket.status_history.map((history, idx) => (
-                  <li key={history.id}>
-                    <div className="relative pb-8">
-                      {idx !== ticket.status_history!.length - 1 && (
-                        <span
-                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <div className="relative flex space-x-3">
+          <div className="px-6 py-4 border-t border-slate-700">
+            <h3 className="text-sm font-medium text-slate-200 mb-3">Status History</h3>
+            <ul className="-mb-8">
+              {ticket.status_history.map((history, idx) => (
+                <li key={history.id}>
+                  <div className="relative pb-8">
+                    {idx !== ticket.status_history!.length - 1 && <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-700" />}
+                    <div className="relative flex space-x-3">
+                      <span className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center">
+                        <ClockIcon className="h-4 w-4 text-slate-500" />
+                      </span>
+                      <div className="flex min-w-0 flex-1 justify-between pt-1.5">
                         <div>
-                          <span className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <ClockIcon className="h-4 w-4 text-gray-500" />
-                          </span>
+                          <p className="text-sm text-slate-400">
+                            Status changed to <span className="font-medium text-slate-200">{history.new_status}</span>
+                            {history.reason && <span className="block text-slate-500 mt-1">{history.reason}</span>}
+                          </p>
                         </div>
-                        <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
-                          <div>
-                            <p className="text-sm text-gray-500">
-                              Status changed to{' '}
-                              <span className="font-medium text-gray-900">
-                                {history.new_status}
-                              </span>
-                              {history.reason && (
-                                <span className="block text-gray-500 mt-1">
-                                  {history.reason}
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                            {format(new Date(history.changed_at), 'MMM d, h:mm a')}
-                          </div>
-                        </div>
+                        <span className="text-sm text-slate-500">{format(new Date(history.changed_at), 'MMM d, h:mm a')}</span>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ class AIAnalysis(models.Model):
         ('approve', 'Approve'),
         ('reject', 'Reject'),
         ('review', 'Manual Review Required'),
+        ('need_info', 'Additional Information Required'),
     ]
 
     ticket = models.OneToOneField(

@@ -15,13 +15,30 @@ from apps.notifications.services import NotificationService
 
 
 class AgentTicketViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Ticket.objects.all()
+    """
+    Agent viewset - by default shows only tickets requiring attention.
+    AI handles most decisions; agents only see escalated cases.
+    """
     permission_classes = [IsAuthenticated, IsAgent]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['status', 'incident_type', 'assigned_agent']
     search_fields = ['ticket_id', 'title', 'description', 'customer__email']
     ordering_fields = ['created_at', 'updated_at', 'incident_date', 'claim_amount']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        """
+        By default, show tickets needing attention (pending_info) and AI processed (approved, rejected).
+        Use ?show_all=true to include in-progress tickets (submitted, processing).
+        """
+        queryset = Ticket.objects.all()
+        show_all = self.request.query_params.get('show_all', 'false').lower() == 'true'
+        
+        if not show_all and self.action == 'list':
+            # Show tickets needing review + AI processed; exclude in-progress
+            queryset = queryset.filter(status__in=['pending_info', 'approved', 'rejected'])
+        
+        return queryset
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -142,7 +159,10 @@ class AgentTicketViewSet(viewsets.ReadOnlyModelViewSet):
             'by_status': dict(
                 Ticket.objects.values('status').annotate(count=Count('id')).values_list('status', 'count')
             ),
-            'pending_review': Ticket.objects.filter(status__in=['submitted', 'processing']).count(),
+            'needs_attention': Ticket.objects.filter(status='pending_info').count(),
+            'ai_processing': Ticket.objects.filter(status__in=['submitted', 'processing']).count(),
+            'auto_approved': Ticket.objects.filter(status='approved').count(),
+            'auto_rejected': Ticket.objects.filter(status='rejected').count(),
             'total_claim_amount': Ticket.objects.filter(status='approved').aggregate(
                 total=Sum('claim_amount')
             )['total'] or 0,

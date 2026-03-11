@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +9,8 @@ from .models import Document
 from .serializers import DocumentUploadSerializer, DocumentListSerializer
 from apps.tickets.models import Ticket
 from apps.accounts.permissions import IsOwnerOrAgent
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
@@ -52,7 +56,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
         document = serializer.save()
 
         from apps.ai_services.tasks import process_document
-        process_document.delay(document.id)
+        try:
+            process_document.delay(document.id)
+        except Exception as e:
+            logger.error(f"Failed to queue AI processing for document {document.id}: {e}")
 
         return Response(
             DocumentListSerializer(document, context={'request': request}).data,
@@ -102,7 +109,10 @@ class TicketDocumentViewSet(viewsets.ModelViewSet):
         document = serializer.save()
 
         from apps.ai_services.tasks import process_document
-        process_document.delay(document.id)
+        try:
+            process_document.delay(document.id)
+        except Exception as e:
+            logger.error(f"Failed to queue AI processing for document {document.id}: {e}")
 
         return Response(
             DocumentListSerializer(document, context={'request': request}).data,

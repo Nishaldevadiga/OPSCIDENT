@@ -30,7 +30,7 @@ function App() {
 
   return (
     <Router>
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' } }} />
       <Routes>
         <Route path="/login" element={
           isAuthenticated ? <Navigate to={user?.role === 'agent' ? '/agent/dashboard' : '/dashboard'} replace /> : <Login />
