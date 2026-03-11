@@ -26,6 +26,15 @@ export default {
       fontFamily: {
         heading: ['Sora', 'system-ui', 'sans-serif'],
       },
+      animation: {
+        marquee: 'marquee 30s linear infinite',
+      },
+      keyframes: {
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
       boxShadow: {
         'glow': '0 0 40px -10px rgb(16 185 129 / 0.35)',
         'card': '0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2)',

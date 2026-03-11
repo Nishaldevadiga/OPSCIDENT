@@ -30,6 +30,39 @@ const features = [
   },
 ];
 
+const testimonials = [
+  {
+    quote: "Had my claim approved in under an hour. The process was so smooth—uploaded photos, got a decision, done.",
+    name: "Sarah M.",
+    role: "Vehicle incident",
+    rating: 5,
+  },
+  {
+    quote: "Finally, an insurance portal that doesn't feel like paperwork hell. Clear status, no endless waiting.",
+    name: "James K.",
+    role: "Property damage",
+    rating: 5,
+  },
+  {
+    quote: "Was skeptical at first, but the AI review was fast and fair. Would definitely use again.",
+    name: "Priya L.",
+    role: "Vehicle collision",
+    rating: 5,
+  },
+  {
+    quote: "Best claims experience I've had. Transparent, quick, and I could track everything in one place.",
+    name: "Marcus T.",
+    role: "Natural disaster",
+    rating: 5,
+  },
+  {
+    quote: "Uploaded my photos, got a response the same day. No runaround, no endless hold music.",
+    name: "Elena R.",
+    role: "Personal injury",
+    rating: 5,
+  },
+];
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 overflow-hidden">
@@ -92,6 +125,36 @@ export default function Home() {
             >
               Sign in to dashboard
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials - horizontal marquee */}
+      <section className="relative z-10 py-16 overflow-hidden">
+        <h2 className="text-center text-xl font-semibold text-slate-400 font-heading mb-10 px-6">
+          Trusted by customers
+        </h2>
+        <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]">
+          <div className="flex shrink-0 w-max animate-marquee gap-6 pr-6">
+            {[...testimonials, ...testimonials].map((t, i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 w-[320px] rounded-xl border border-slate-800 bg-slate-900/60 p-6"
+              >
+                <div className="flex gap-1 mb-3">
+                  {Array.from({ length: t.rating }).map((_, j) => (
+                    <svg key={j} className="w-4 h-4 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed mb-4">"{t.quote}"</p>
+                <div>
+                  <span className="font-medium text-slate-100 text-sm">{t.name}</span>
+                  <span className="text-slate-500 text-sm"> · {t.role}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
