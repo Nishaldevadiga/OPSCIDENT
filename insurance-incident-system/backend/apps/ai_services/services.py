@@ -213,6 +213,24 @@ class AIAnalysisService:
     def __init__(self):
         self.groq_client = GroqClient()
 
+    @staticmethod
+    def _estimate_payout_range(damage_score: float, repair_type: str) -> Tuple[float, float]:
+        """Return (min, max) estimated payout rounded to nearest $100."""
+        t = max(0.0, min(100.0, damage_score)) / 100.0
+        if repair_type == 'minor_repair':
+            low  = 200  + t * 1300   # $200–$1,500
+            high = 500  + t * 2000   # $500–$2,500
+        elif repair_type == 'major_repair':
+            low  = 1500 + t * 8500   # $1,500–$10,000
+            high = 3000 + t * 15000  # $3,000–$18,000
+        elif repair_type == 'replacement':
+            low  = 8000  + t * 22000  # $8,000–$30,000
+            high = 15000 + t * 40000  # $15,000–$55,000
+        else:
+            low  = 100 + t * 1900    # $100–$2,000
+            high = 300 + t * 3700    # $300–$4,000
+        return round(low / 100) * 100, round(high / 100) * 100
+
     def extract_claim_fields(self, file_content: bytes, content_type: str) -> dict:
         """OCR + LLM extraction of claim fields from an uploaded document or image.
 
@@ -383,6 +401,30 @@ Respond ONLY with valid JSON, no other text."""
             logger.info(f"Image analysis complete for document {document.id}")
 
         except Exception as e:
+            from PIL import UnidentifiedImageError
+            if isinstance(e, (UnidentifiedImageError, OSError)) and 'cannot identify' in str(e).lower():
+                # File is not a readable image (e.g. AVIF, HEIC). Save a fallback
+                # analysis requesting a new photo rather than retrying endlessly.
+                logger.warning(f"Unreadable image format for document {document.id}: {e}")
+                analysis, _ = AIAnalysis.objects.get_or_create(
+                    ticket=document.ticket,
+                    defaults={'extracted_data': {}}
+                )
+                current_data = analysis.extracted_data or {}
+                current_data[f'image_{document.id}'] = {
+                    "damage_description": "Image could not be read — unsupported format",
+                    "damage_severity": 0,
+                    "damage_areas": [],
+                    "estimated_repair_type": "unknown",
+                    "fraud_indicators": ["unreadable_image_format"],
+                    "matches_claim_description": True,
+                    "consistency_notes": "File format not supported. Customer must upload JPEG or PNG.",
+                    "confidence": 0.0,
+                }
+                analysis.extracted_data = current_data
+                analysis.image_analysis_complete = True
+                analysis.save()
+                return  # Don't raise — let make_ai_decision handle it
             logger.error(f"Error analyzing image {document.id}: {e}")
             raise
 
@@ -442,68 +484,148 @@ Respond ONLY with valid JSON, no other text."""
                 description_mismatch = True
                 mismatch_notes.append(verification.get("reason", "Claim does not match uploaded images"))
         
+        # Special case: all uploaded images are unreadable (wrong format)
+        all_unreadable = (
+            has_images and
+            all('unreadable_image_format' in (d.get('fraud_indicators') or []) for d in image_analyses)
+        )
+        if all_unreadable:
+            recommendation = 'need_info'
+            new_status = 'pending_info'
+            confidence = 0.8
+            reason = (
+                "We were unable to process your uploaded image(s) due to an incompatible file format. "
+                "Please re-upload your damage photos as JPEG or PNG files. "
+                "If you're using an iPhone, open the photo in the Photos app, tap Share, then Save Image before uploading."
+            )
+            analysis.analysis_summary = "Image format not supported (e.g. AVIF/HEIC). Customer must re-upload as JPEG or PNG."
+            analysis.recommendation = recommendation
+            analysis.confidence_score = confidence
+            analysis.save()
+            if new_status != old_status:
+                ticket.status = new_status
+                ticket.save()
+                StatusHistory.objects.create(
+                    ticket=ticket,
+                    old_status=old_status,
+                    new_status=new_status,
+                    reason=reason
+                )
+                NotificationService.send_info_request_notification(ticket, reason)
+            logger.info(f"AI Decision for {ticket.ticket_id}: unreadable images → {new_status}")
+            return {'recommendation': recommendation, 'status': new_status, 'confidence': confidence, 'reason': reason}
+
         # Decision Logic
         if fraud_count >= 2:
             # HIGH FRAUD RISK - Auto reject
             recommendation = 'reject'
             new_status = 'rejected'
             confidence = 0.95
-            reason = f"Claim automatically rejected due to {fraud_count} fraud indicators detected: {', '.join(fraud_indicators[:3])}"
-            analysis.analysis_summary = reason
-            
+            reason = (
+                "After carefully reviewing your claim and the submitted documentation, "
+                "our assessment was unable to verify the incident or damage as described. "
+                "If you believe this outcome is incorrect, please contact our support team "
+                "with any additional evidence or documentation."
+            )
+            analysis.analysis_summary = (
+                f"Auto-rejected: {fraud_count} fraud indicator(s) detected — "
+                + ', '.join(fraud_indicators[:3])
+            )
+
         elif not has_images and ticket.incident_type in ['vehicle_collision', 'property_damage', 'vehicle_theft']:
             # NEED MORE INFO - No damage photos for damage-related claims
             recommendation = 'need_info'
             new_status = 'pending_info'
             confidence = 0.8
-            reason = "Additional documentation required: Please upload photos of the damage for assessment."
-            analysis.analysis_summary = "Insufficient evidence. Damage photos required for claim verification."
-            
+            reason = (
+                "To continue processing your claim, please upload clear photographs showing the damage. "
+                "Damage photos are required for claims of this type."
+            )
+            analysis.analysis_summary = "No damage images submitted. Photos required for this incident type."
+
         elif description_mismatch:
-            # IMAGE DOESN'T MATCH CLAIM (e.g. bike in description, car in image) - Auto reject
+            # IMAGE DOESN'T MATCH CLAIM - Auto reject
             recommendation = 'reject'
             new_status = 'rejected'
             confidence = 0.9
-            reason = "Claim rejected: Uploaded images do not match the claim description. " + (mismatch_notes[0] if mismatch_notes else "Photos do not correspond to the claimed damage.")
-            analysis.analysis_summary = "Description-image mismatch: " + ("; ".join(mismatch_notes[:2]) if mismatch_notes else "Claim rejected - evidence does not support the claim.")
-            
+            reason = (
+                "After reviewing your claim, we found that the submitted photos do not appear to correspond "
+                "to the incident described. Please contact our support team if you believe this is an error "
+                "or if you have additional documentation to support your claim."
+            )
+            analysis.analysis_summary = (
+                "Rejected — description/image mismatch: "
+                + ("; ".join(mismatch_notes[:2]) if mismatch_notes else "Evidence does not match claim description.")
+            )
+
         elif damage_score >= 45 and fraud_count == 0:
-            # APPROVE - Clear visible damage (e.g. bumper, fender) with no fraud
+            # APPROVE - Clear visible damage with no fraud
             recommendation = 'approve'
             new_status = 'approved'
             confidence = min(0.85 + (damage_score - 45) * 0.003, 0.98)
-            reason = f"Claim automatically approved. Damage assessment score: {damage_score}/100. No fraud indicators."
-            analysis.analysis_summary = f"Verified damage (score: {damage_score}) with supporting documentation. Claim approved."
-            
+            reason = (
+                "Your claim has been approved following our review of the submitted documents. "
+                "A representative will be in touch with next steps regarding your payout."
+            )
+            analysis.analysis_summary = f"Approved. Damage score: {damage_score}/100. No fraud indicators."
+
         elif damage_score >= 35 and fraud_count <= 1:
-            # MODERATE - Needs agent review (low score or minor concerns)
+            # MODERATE - Needs agent review
             recommendation = 'review'
             new_status = 'pending_info'
             confidence = 0.6
-            reason = f"Moderate damage detected (score: {damage_score}). Agent review recommended."
-            analysis.analysis_summary = f"Moderate damage score ({damage_score}) with {fraud_count} minor concern(s). Escalated for agent review."
-            
+            reason = (
+                "Your claim is currently under review by one of our team members. "
+                "We will notify you as soon as a decision has been made."
+            )
+            analysis.analysis_summary = (
+                f"Escalated for agent review. Damage score: {damage_score}/100"
+                + (f", {fraud_count} minor concern(s)." if fraud_count else ".")
+            )
+
         elif damage_score < 35:
             # LOW DAMAGE - Request more evidence or reject
             if damage_score < 15:
                 recommendation = 'reject'
                 new_status = 'rejected'
                 confidence = 0.75
-                reason = f"Claim rejected due to insufficient damage evidence. Damage score: {damage_score}/100."
-                analysis.analysis_summary = f"Low damage score ({damage_score}) does not meet threshold for claim approval."
+                reason = (
+                    "Based on our assessment of the submitted documentation, the evidence provided "
+                    "does not demonstrate sufficient damage to support this claim. "
+                    "If you have additional evidence such as repair estimates or inspection reports, "
+                    "please contact our support team."
+                )
+                analysis.analysis_summary = f"Rejected. Damage score {damage_score}/100 — below minimum threshold."
             else:
                 recommendation = 'need_info'
                 new_status = 'pending_info'
                 confidence = 0.65
-                reason = "Please provide additional photos or documentation showing the extent of damage."
-                analysis.analysis_summary = f"Damage score ({damage_score}) below threshold. Additional evidence requested."
+                reason = (
+                    "To help us better assess your claim, please provide additional photographs "
+                    "clearly showing the extent of the damage, along with any supporting documents "
+                    "such as repair estimates or receipts."
+                )
+                analysis.analysis_summary = f"Damage score {damage_score}/100 — below threshold. Additional evidence requested."
         else:
             # DEFAULT - Agent review
             recommendation = 'review'
             new_status = 'pending_info'
             confidence = 0.5
-            reason = "Claim requires manual review by an agent."
-            analysis.analysis_summary = "Unable to make automated decision. Escalated for agent review."
+            reason = (
+                "Your claim has been received and is currently being reviewed by our team. "
+                "We will be in touch shortly."
+            )
+            analysis.analysis_summary = "Escalated for manual agent review."
+
+        # Compute payout range from image analyses (use highest damage score image)
+        best_repair_type = 'unknown'
+        if image_analyses:
+            best = max(image_analyses, key=lambda d: d.get('damage_severity', 0) if isinstance(d, dict) else 0)
+            best_repair_type = best.get('estimated_repair_type', 'unknown') or 'unknown'
+        if damage_score > 0:
+            amt_min, amt_max = self._estimate_payout_range(damage_score, best_repair_type)
+            analysis.claim_amount_min = amt_min
+            analysis.claim_amount_max = amt_max
 
         # Save analysis
         analysis.recommendation = recommendation
@@ -519,7 +641,7 @@ Respond ONLY with valid JSON, no other text."""
                 ticket=ticket,
                 old_status=old_status,
                 new_status=new_status,
-                reason=f"[AI Decision] {reason}"
+                reason=reason
             )
 
             # Send notification to customer

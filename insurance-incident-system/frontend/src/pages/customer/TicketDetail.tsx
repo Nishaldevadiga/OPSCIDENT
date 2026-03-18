@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { ticketsApi, documentsApi } from '../../services/api';
-import type { Ticket } from '../../types';
+import type { Ticket, TicketStatus } from '../../types';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FileUpload from '../../components/FileUpload';
@@ -259,10 +259,8 @@ export default function CustomerTicketDetail() {
                       </span>
                       <div className="flex min-w-0 flex-1 justify-between pt-1.5">
                         <div>
-                          <p className="text-sm text-slate-400">
-                            Status changed to <span className="font-medium text-slate-200">{history.new_status}</span>
-                            {history.reason && <span className="block text-slate-500 mt-1">{history.reason}</span>}
-                          </p>
+                          <StatusBadge status={history.new_status as TicketStatus} />
+                          {history.reason && <p className="text-sm text-slate-300 mt-1.5">{history.reason}</p>}
                         </div>
                         <span className="text-sm text-slate-500">{format(new Date(history.changed_at), 'MMM d, h:mm a')}</span>
                       </div>

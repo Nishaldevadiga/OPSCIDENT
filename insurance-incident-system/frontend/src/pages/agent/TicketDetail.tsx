@@ -294,6 +294,19 @@ export default function AgentTicketDetail() {
                   </div>
                 )}
 
+                {analysis.claim_amount_min != null && analysis.claim_amount_max != null && (
+                  <div className="rounded-xl bg-primary-500/10 border border-primary-500/25 px-4 py-3">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <SparklesIcon className="h-4 w-4 text-primary-400" />
+                      <span className="text-xs font-semibold text-primary-400 uppercase tracking-wide">AI Recommended Payout</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-100">
+                      ${Number(analysis.claim_amount_min).toLocaleString()} – ${Number(analysis.claim_amount_max).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Estimated range based on damage assessment</p>
+                  </div>
+                )}
+
                 {analysis.fraud_indicators && analysis.fraud_indicators.length > 0 && (
                   <div>
                     <span className="text-sm font-medium text-rose-400">Fraud Indicators</span>

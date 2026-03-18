@@ -84,6 +84,8 @@ export interface AIAnalysis {
   recommendation: 'approve' | 'reject' | 'review' | 'need_info';
   confidence_score: number;
   analysis_summary: string;
+  claim_amount_min?: number | null;
+  claim_amount_max?: number | null;
   pdf_analysis_complete: boolean;
   image_analysis_complete: boolean;
   is_complete: boolean;

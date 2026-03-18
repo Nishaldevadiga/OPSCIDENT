@@ -46,6 +46,7 @@ class AIAnalysisSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'extracted_data', 'damage_score', 'fraud_indicators',
             'recommendation', 'confidence_score', 'analysis_summary',
+            'claim_amount_min', 'claim_amount_max',
             'pdf_analysis_complete', 'image_analysis_complete', 'is_complete', 'analyzed_at'
         ]
         read_only_fields = fields

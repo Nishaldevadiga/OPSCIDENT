@@ -164,12 +164,12 @@ def _escalate_decision_failure(ticket_id):
                 ticket=ticket,
                 old_status='processing',
                 new_status='pending_info',
-                reason='AI decision engine failed after multiple retries. Escalated for manual review.'
+                reason='Your claim is currently being reviewed by one of our team members. We will notify you as soon as a decision has been made.'
             )
             NotificationService.send_info_request_notification(
                 ticket,
-                "Your claim documents have been received but require manual review. "
-                "An agent will contact you shortly."
+                "Your claim documents have been received and are being reviewed by our team. "
+                "An agent will be in touch with you shortly."
             )
             logger.info(f"Ticket {ticket.ticket_id} escalated to manual review after decision failure")
     except Exception as e:
@@ -192,12 +192,12 @@ def _escalate_to_manual_review(document_id):
                 ticket=ticket,
                 old_status='processing',
                 new_status='pending_info',
-                reason='AI analysis failed after multiple retries. Escalated for manual review.'
+                reason='Your claim is currently being reviewed by one of our team members. We will notify you as soon as a decision has been made.'
             )
             NotificationService.send_info_request_notification(
                 ticket,
-                "We were unable to automatically process your claim. "
-                "Our team will review it manually and contact you shortly."
+                "Your claim is currently being reviewed by one of our team members. "
+                "We will notify you as soon as a decision has been made."
             )
             logger.info(f"Ticket {ticket.ticket_id} escalated to manual review after AI failure")
     except Exception as e:

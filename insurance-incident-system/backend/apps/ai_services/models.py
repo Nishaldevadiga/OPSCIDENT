@@ -25,6 +25,8 @@ class AIAnalysis(models.Model):
     )
     confidence_score = models.FloatField(default=0.0)
     analysis_summary = models.TextField(blank=True)
+    claim_amount_min = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    claim_amount_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     pdf_analysis_complete = models.BooleanField(default=False)
     image_analysis_complete = models.BooleanField(default=False)
     analyzed_at = models.DateTimeField(auto_now=True)

@@ -21,7 +21,29 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
                 f"File type '{content_type}' is not allowed. Allowed types: PDF, JPEG, PNG"
             )
 
+        # Validate actual file bytes — content_type header can be wrong (e.g. AVIF/HEIC sent as image/jpeg)
+        header = value.read(16)
+        value.seek(0)
+        if not self._is_supported_format(header):
+            raise serializers.ValidationError(
+                "Unsupported image format. Please upload a JPEG, PNG, or WebP file. "
+                "iPhone users: open the photo in Photos, tap Share → Save as JPEG before uploading."
+            )
+
         return value
+
+    @staticmethod
+    def _is_supported_format(header: bytes) -> bool:
+        """Check magic bytes to confirm JPEG, PNG, WebP, or PDF."""
+        if header[:3] == b'\xff\xd8\xff':                     # JPEG
+            return True
+        if header[:8] == b'\x89PNG\r\n\x1a\n':               # PNG
+            return True
+        if header[:4] == b'RIFF' and header[8:12] == b'WEBP': # WebP
+            return True
+        if header[:4] == b'%PDF':                             # PDF
+            return True
+        return False
 
     def create(self, validated_data):
         file = validated_data['file']
