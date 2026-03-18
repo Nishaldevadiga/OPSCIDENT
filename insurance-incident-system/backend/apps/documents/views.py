@@ -1,6 +1,6 @@
 import logging
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -11,6 +11,31 @@ from apps.tickets.models import Ticket
 from apps.accounts.permissions import IsOwnerOrAgent
 
 logger = logging.getLogger(__name__)
+
+
+class ExtractFieldsView(generics.GenericAPIView):
+    """Accept a file upload, run OCR/LLM, return pre-fillable claim fields."""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed = {'application/pdf', 'image/jpeg', 'image/png', 'image/webp'}
+        if file.content_type not in allowed:
+            return Response({'error': f'Unsupported file type: {file.content_type}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_content = file.read()
+
+        from apps.ai_services.services import AIAnalysisService
+        try:
+            result = AIAnalysisService().extract_claim_fields(file_content, file.content_type)
+            return Response(result)
+        except Exception as e:
+            logger.error(f"extract_claim_fields error: {e}")
+            return Response({'error': 'Extraction failed', 'confidence': 0}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DocumentViewSet(viewsets.ModelViewSet):

@@ -53,7 +53,7 @@ export default function FileUpload({ files, onFilesChange, maxFiles = 10, disabl
           {isDragActive ? 'Drop the files here...' : 'Drag & drop files here, or click to select'}
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          PDF, JPEG, PNG up to 10MB each (max {maxFiles} files)
+          <span className="text-rose-400/80">Image required</span> · PDF optional · JPEG, PNG, PDF up to 10MB
         </p>
       </div>
 

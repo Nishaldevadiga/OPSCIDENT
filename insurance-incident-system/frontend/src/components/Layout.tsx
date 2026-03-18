@@ -60,13 +60,16 @@ export default function Layout({ isAgent = false }: LayoutProps) {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center text-sm text-slate-300">
-                <UserCircleIcon className="h-6 w-6 mr-2 text-slate-500" />
+              <Link
+                to={isAgent ? '/agent/profile' : '/profile'}
+                className="flex items-center gap-2 text-sm text-slate-300 hover:text-slate-100 transition-colors"
+              >
+                <UserCircleIcon className="h-6 w-6 text-slate-500" />
                 <span>{user?.first_name} {user?.last_name}</span>
-                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-slate-800 text-primary-400 capitalize border border-slate-600">
+                <span className="px-2 py-0.5 text-xs rounded-full bg-slate-800 text-primary-400 capitalize border border-slate-600">
                   {user?.role}
                 </span>
-              </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"

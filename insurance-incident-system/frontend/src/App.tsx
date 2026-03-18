@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 
 import Login from './pages/Login';
+import AgentLogin from './pages/AgentLogin';
 import Register from './pages/Register';
 import LandingOrLayout from './components/LandingOrLayout';
 import CustomerDashboard from './pages/customer/Dashboard';
@@ -10,6 +11,8 @@ import CustomerTicketCreate from './pages/customer/TicketCreate';
 import CustomerTicketDetail from './pages/customer/TicketDetail';
 import AgentDashboard from './pages/agent/Dashboard';
 import AgentTicketDetail from './pages/agent/TicketDetail';
+import Profile from './pages/Profile';
+import ChangePassword from './pages/ChangePassword';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
@@ -36,6 +39,9 @@ function App() {
         <Route path="/login" element={
           isAuthenticated ? <Navigate to={user?.role === 'agent' ? '/agent/dashboard' : '/dashboard'} replace /> : <Login />
         } />
+        <Route path="/agent/login" element={
+          isAuthenticated ? <Navigate to={user?.role === 'agent' ? '/agent/dashboard' : '/dashboard'} replace /> : <AgentLogin />
+        } />
         <Route path="/register" element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
         } />
@@ -44,6 +50,7 @@ function App() {
           <Route path="dashboard" element={<CustomerDashboard />} />
           <Route path="tickets/new" element={<CustomerTicketCreate />} />
           <Route path="tickets/:id" element={<CustomerTicketDetail />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         <Route path="/agent" element={
@@ -54,7 +61,10 @@ function App() {
           <Route index element={<Navigate to="/agent/dashboard" replace />} />
           <Route path="dashboard" element={<AgentDashboard />} />
           <Route path="tickets/:id" element={<AgentTicketDetail />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
+
+        <Route path="/change-password" element={<ChangePassword />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

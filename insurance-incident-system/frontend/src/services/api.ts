@@ -81,6 +81,16 @@ export const authApi = {
     return response.data;
   },
 
+  updateProfile: async (data: { first_name: string; last_name: string; phone?: string }): Promise<User> => {
+    const response = await api.patch('/auth/me/', data);
+    return response.data;
+  },
+
+  changePassword: async (current_password: string, new_password: string, email?: string): Promise<{ message: string }> => {
+    const response = await api.post('/auth/change-password/', { current_password, new_password, ...(email ? { email } : {}) });
+    return response.data;
+  },
+
   refreshToken: async (refresh: string): Promise<{ access: string }> => {
     const response = await api.post('/auth/token/refresh/', { refresh });
     return response.data;
@@ -120,6 +130,25 @@ export const documentsApi = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+    });
+    return response.data;
+  },
+
+  extractFields: async (file: File): Promise<{
+    incident_type?: string;
+    title?: string;
+    description?: string;
+    incident_date?: string;
+    incident_location?: string;
+    claim_amount?: number | null;
+    confidence?: number;
+    notes?: string;
+    error?: string;
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/documents/extract-fields/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },

@@ -92,22 +92,32 @@ class GroqClient:
 
             result = response.choices[0].message.content
             try:
-                data = json.loads(result)
+                # Strip markdown code blocks if present (vision model often wraps JSON in ```json...```)
+                cleaned = result.strip()
+                if cleaned.startswith('```'):
+                    lines = cleaned.split('\n')
+                    # Remove opening ``` line and closing ``` line
+                    inner = lines[1:] if lines[0].startswith('```') else lines
+                    if inner and inner[-1].strip() == '```':
+                        inner = inner[:-1]
+                    cleaned = '\n'.join(inner).strip()
+                data = json.loads(cleaned)
                 if 'matches_claim_description' not in data:
                     data['matches_claim_description'] = True
                 if 'consistency_notes' not in data:
                     data['consistency_notes'] = ''
                 return data
             except json.JSONDecodeError:
+                logger.error(f"Vision model returned non-JSON response: {result[:200]}")
                 return {
                     "damage_description": result,
-                    "damage_severity": 50,
+                    "damage_severity": 0,
                     "damage_areas": [],
-                    "estimated_repair_type": "major_repair",
-                    "fraud_indicators": [],
-                    "matches_claim_description": True,
-                    "consistency_notes": "",
-                    "confidence": 0.5
+                    "estimated_repair_type": "none",
+                    "fraud_indicators": ["unable_to_parse_image_analysis"],
+                    "matches_claim_description": False,
+                    "consistency_notes": "Image analysis could not be parsed",
+                    "confidence": 0.0
                 }
 
         except Exception as e:
@@ -202,6 +212,56 @@ class AIAnalysisService:
 
     def __init__(self):
         self.groq_client = GroqClient()
+
+    def extract_claim_fields(self, file_content: bytes, content_type: str) -> dict:
+        """OCR + LLM extraction of claim fields from an uploaded document or image.
+
+        Returns a dict with keys: incident_type, title, description,
+        incident_date, incident_location, claim_amount, confidence, notes.
+        All values are best-effort — empty string means not found.
+        """
+        prompt = """You are an insurance claims assistant. Analyze this document and extract the following fields.
+Return ONLY valid JSON with exactly these keys:
+{
+  "incident_type": one of ["vehicle_collision","vehicle_theft","property_damage","natural_disaster","personal_injury","other"] or "",
+  "title": "short claim title (max 80 chars)" or "",
+  "description": "detailed description of the incident" or "",
+  "incident_date": "YYYY-MM-DD format" or "",
+  "incident_location": "address or location" or "",
+  "claim_amount": numeric value as number or null,
+  "confidence": 0.0-1.0 how confident you are in these extractions,
+  "notes": "anything important not captured above" or ""
+}
+Only populate fields you are confident about. Leave as empty string or null if not found."""
+
+        try:
+            if content_type == 'application/pdf':
+                import PyPDF2, io
+                pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+                text = ''.join(page.extract_text() or '' for page in pdf_reader.pages)
+                if not text.strip():
+                    return {'error': 'No text could be extracted from PDF', 'confidence': 0}
+                result = self.groq_client.analyze_text(text, prompt)
+            else:
+                # Image: use vision model
+                image_b64 = base64.b64encode(file_content).decode('utf-8')
+                result = self.groq_client.analyze_image(image_b64, prompt)
+
+            if not result:
+                return {'confidence': 0}
+
+            # Normalise claim_amount to float or None
+            amount = result.get('claim_amount')
+            if amount is not None:
+                try:
+                    result['claim_amount'] = float(amount)
+                except (ValueError, TypeError):
+                    result['claim_amount'] = None
+
+            return result
+        except Exception as e:
+            logger.error(f"extract_claim_fields failed: {e}")
+            return {'error': str(e), 'confidence': 0}
 
     def analyze_pdf(self, document):
         """Extract and analyze text from a PDF document."""

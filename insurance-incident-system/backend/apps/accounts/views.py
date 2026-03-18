@@ -64,3 +64,49 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ChangePasswordView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        email = request.data.get('email')
+
+        # If authenticated, use the logged-in user; otherwise require email
+        if request.user.is_authenticated:
+            user = request.user
+        else:
+            if not email:
+                return Response(
+                    {'error': 'Email is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'No account found with this email'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        if not current_password or not new_password:
+            return Response(
+                {'error': 'Both current_password and new_password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not user.check_password(current_password):
+            return Response(
+                {'error': 'Current password is incorrect'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'New password must be at least 8 characters'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': 'Password changed successfully'})
