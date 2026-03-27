@@ -25,6 +25,10 @@ const statusConfig: Record<TicketStatus, { label: string; className: string }> =
     label: 'Rejected',
     className: 'bg-rose-500/20 text-rose-400 border border-rose-500/30',
   },
+  appealed: {
+    label: 'Under Appeal',
+    className: 'bg-violet-500/20 text-violet-400 border border-violet-500/30',
+  },
 };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {

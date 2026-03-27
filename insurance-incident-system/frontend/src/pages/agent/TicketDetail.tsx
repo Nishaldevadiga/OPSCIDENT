@@ -27,6 +27,7 @@ export default function AgentTicketDetail() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState<ModalType>(null);
   const [actionReason, setActionReason] = useState('');
+  const [approvedAmount, setApprovedAmount] = useState('');
   const [noteInternal, setNoteInternal] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,7 +67,7 @@ export default function AgentTicketDetail() {
     try {
       switch (modalOpen) {
         case 'approve':
-          await agentApi.approveTicket(parseInt(id!), actionReason);
+          await agentApi.approveTicket(parseInt(id!), actionReason, approvedAmount ? parseFloat(approvedAmount) : undefined);
           toast.success('Ticket approved successfully');
           break;
         case 'reject':
@@ -84,6 +85,7 @@ export default function AgentTicketDetail() {
       }
       setModalOpen(null);
       setActionReason('');
+      setApprovedAmount('');
       loadTicket();
     } catch (error) {
       toast.error('Action failed. Please try again.');
@@ -408,9 +410,33 @@ export default function AgentTicketDetail() {
                     {modalOpen === 'request_info' && 'Request Information'}
                     {modalOpen === 'add_note' && 'Add Note'}
                   </Dialog.Title>
-                  <div className="mt-4">
+                  <div className="mt-4 space-y-3">
+                    {modalOpen === 'approve' && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                          Approved Payout Amount ($) <span className="text-slate-500 font-normal">(optional)</span>
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={approvedAmount}
+                            onChange={(e) => setApprovedAmount(e.target.value)}
+                            className="block w-full rounded-lg border border-slate-600 bg-slate-800 pl-7 pr-4 py-2.5 text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 outline-none text-sm"
+                          />
+                        </div>
+                        {ticket?.ai_analysis?.claim_amount_min != null && (
+                          <p className="mt-1 text-xs text-primary-400">
+                            AI estimate: ${Number(ticket.ai_analysis.claim_amount_min).toLocaleString()} – ${Number(ticket.ai_analysis.claim_amount_max).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <textarea
-                      rows={4}
+                      rows={3}
                       className="block w-full rounded-lg border-slate-600 bg-slate-800 text-slate-100 placeholder-slate-500 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       placeholder={
                         modalOpen === 'approve'

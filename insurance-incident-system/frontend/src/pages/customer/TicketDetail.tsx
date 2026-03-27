@@ -16,6 +16,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
 export default function CustomerTicketDetail() {
@@ -27,6 +28,9 @@ export default function CustomerTicketDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [appealText, setAppealText] = useState('');
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [submittingAppeal, setSubmittingAppeal] = useState(false);
 
   useEffect(() => {
     if (id) loadTicket();
@@ -73,6 +77,23 @@ export default function CustomerTicketDetail() {
       toast.error('Failed to upload files');
     } finally {
       setUploadingFiles(false);
+    }
+  };
+
+  const handleAppeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (appealText.trim().length < 20) return;
+    setSubmittingAppeal(true);
+    try {
+      await ticketsApi.appeal(parseInt(id!), appealText.trim());
+      toast.success('Your appeal has been submitted.');
+      setShowAppealModal(false);
+      setAppealText('');
+      loadTicket();
+    } catch {
+      toast.error('Failed to submit appeal. Please try again.');
+    } finally {
+      setSubmittingAppeal(false);
     }
   };
 
@@ -131,8 +152,14 @@ export default function CustomerTicketDetail() {
           )}
           {ticket.claim_amount && (
             <div>
-              <h3 className="text-sm font-medium text-slate-500">Claim Amount</h3>
-              <p className="mt-1 text-sm text-slate-200">${ticket.claim_amount.toLocaleString()}</p>
+              <h3 className="text-sm font-medium text-slate-500">Claimed Amount</h3>
+              <p className="mt-1 text-sm text-slate-200">${Number(ticket.claim_amount).toLocaleString()}</p>
+            </div>
+          )}
+          {ticket.approved_amount != null && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-500">Approved Payout</h3>
+              <p className="mt-1 text-sm font-semibold text-emerald-400">${Number(ticket.approved_amount).toLocaleString()}</p>
             </div>
           )}
           <div className="md:col-span-2">
@@ -141,30 +168,38 @@ export default function CustomerTicketDetail() {
           </div>
         </div>
 
-        {ticket.ai_analysis && (
-          <div className={`px-6 py-4 border-t border-slate-700 ${aiStatusStyles[ticket.status as keyof typeof aiStatusStyles] || aiStatusStyles.default}`}>
-            <div className="flex items-start">
-              <div className="flex-shrink-0 mt-0.5">
-                {ticket.status === 'approved' ? <CheckCircleIcon className="h-6 w-6 text-emerald-400" /> :
-                 ticket.status === 'rejected' ? <XCircleIcon className="h-6 w-6 text-rose-400" /> :
-                 ticket.status === 'pending_info' ? <ExclamationTriangleIcon className="h-6 w-6 text-orange-400" /> :
-                 <CpuChipIcon className="h-6 w-6 text-sky-400" />}
-              </div>
-              <div className="ml-3 flex-1">
-                <h3 className={`text-sm font-medium ${aiTextStyles[ticket.status as keyof typeof aiTextStyles] || aiTextStyles.default}`}>
-                  {ticket.status === 'approved' ? 'Claim Approved' : ticket.status === 'rejected' ? 'Claim Rejected' :
-                   ticket.status === 'pending_info' ? 'Additional Information Required' : 'AI Processing'}
-                </h3>
-                <p className="mt-1 text-sm text-slate-300">
-                  {ticket.ai_analysis.analysis_summary || 'Your claim is being analyzed by our AI system.'}
-                </p>
-                {ticket.ai_analysis.confidence_score > 0 && (
-                  <p className="mt-1 text-xs text-slate-500">Confidence: {(ticket.ai_analysis.confidence_score * 100).toFixed(0)}%</p>
-                )}
+        {ticket.ai_analysis && ['approved', 'rejected', 'pending_info'].includes(ticket.status) && (() => {
+          const latestReason = ticket.status_history?.[0]?.reason || '';
+          const customerMessages: Record<string, string> = {
+            approved: 'Your claim has been reviewed and approved. If a payout amount has been set, it is shown above.',
+            rejected: 'Your claim has been reviewed and we were unable to approve it at this time.',
+            pending_info: 'We need some additional information before we can continue processing your claim.',
+          };
+          const heading: Record<string, string> = {
+            approved: 'Claim Approved',
+            rejected: 'Claim Not Approved',
+            pending_info: 'Additional Information Required',
+          };
+          return (
+            <div className={`px-6 py-4 border-t border-slate-700 ${aiStatusStyles[ticket.status as keyof typeof aiStatusStyles] || aiStatusStyles.default}`}>
+              <div className="flex items-start">
+                <div className="flex-shrink-0 mt-0.5">
+                  {ticket.status === 'approved' ? <CheckCircleIcon className="h-6 w-6 text-emerald-400" /> :
+                   ticket.status === 'rejected' ? <XCircleIcon className="h-6 w-6 text-rose-400" /> :
+                   <ExclamationTriangleIcon className="h-6 w-6 text-orange-400" />}
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className={`text-sm font-medium ${aiTextStyles[ticket.status as keyof typeof aiTextStyles] || aiTextStyles.default}`}>
+                    {heading[ticket.status] || ticket.status}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-300">
+                    {latestReason || customerMessages[ticket.status]}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {!ticket.ai_analysis && ['submitted', 'processing'].includes(ticket.status) && (
           <div className="px-6 py-4 border-t border-slate-700 bg-sky-500/10">
@@ -245,6 +280,40 @@ export default function CustomerTicketDetail() {
           </div>
         )}
 
+        {ticket.status === 'rejected' && (
+          <div className="px-6 py-4 border-t border-slate-700 bg-rose-500/10">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-rose-400">Disagree with this decision?</h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  You can appeal if you believe this decision was made in error or if you have additional evidence to support your claim.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAppealModal(true)}
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+                Appeal Decision
+              </button>
+            </div>
+          </div>
+        )}
+
+        {ticket.status === 'appealed' && (
+          <div className="px-6 py-4 border-t border-slate-700 bg-violet-500/10">
+            <div className="flex items-center gap-3">
+              <ArrowPathIcon className="h-5 w-5 text-violet-400 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-medium text-violet-300">Appeal Under Review</h3>
+                <p className="text-sm text-slate-400 mt-0.5">
+                  Your appeal has been received and is being reviewed by our claims team. We'll notify you once a decision has been made.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {ticket.status_history && ticket.status_history.length > 0 && (
           <div className="px-6 py-4 border-t border-slate-700">
             <h3 className="text-sm font-medium text-slate-200 mb-3">Status History</h3>
@@ -272,6 +341,62 @@ export default function CustomerTicketDetail() {
           </div>
         )}
       </div>
+
+      {/* Appeal modal */}
+      {showAppealModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ArrowPathIcon className="h-5 w-5 text-violet-400" />
+                <h2 className="text-base font-semibold text-slate-100">Appeal Decision</h2>
+              </div>
+              <button
+                onClick={() => { setShowAppealModal(false); setAppealText(''); }}
+                className="text-slate-500 hover:text-slate-300 transition-colors text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleAppeal} className="px-6 py-5 space-y-4">
+              <p className="text-sm text-slate-400">
+                Explain why you believe this decision should be reconsidered. Provide as much detail as possible, including any additional evidence or circumstances not previously submitted.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Grounds for Appeal <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={5}
+                  value={appealText}
+                  onChange={(e) => setAppealText(e.target.value)}
+                  placeholder="Describe why you believe this claim should be reconsidered..."
+                  className="block w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 outline-none text-sm resize-none"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Minimum 20 characters — {appealText.trim().length} entered
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowAppealModal(false); setAppealText(''); }}
+                  className="px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingAppeal || appealText.trim().length < 20}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+                >
+                  {submittingAppeal ? <><LoadingSpinner size="sm" /><span>Submitting...</span></> : 'Submit Appeal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

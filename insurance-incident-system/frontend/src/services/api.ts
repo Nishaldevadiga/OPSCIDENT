@@ -1,12 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { 
-  LoginResponse, 
-  User, 
-  Ticket, 
-  Document, 
+import type {
+  LoginResponse,
+  User,
+  Ticket,
+  Document,
   TicketCreatePayload,
   PaginatedResponse,
-  AgentStats
+  AgentStats,
+  AnalyticsData,
+  InAppNotification,
 } from '../types';
 
 const API_BASE_URL = '/api';
@@ -95,6 +97,16 @@ export const authApi = {
     const response = await api.post('/auth/token/refresh/', { refresh });
     return response.data;
   },
+
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    const response = await api.post('/auth/forgot-password/', { email });
+    return response.data;
+  },
+
+  resetPassword: async (uid: string, token: string, new_password: string): Promise<{ message: string }> => {
+    const response = await api.post('/auth/reset-password/', { uid, token, new_password });
+    return response.data;
+  },
 };
 
 export const ticketsApi = {
@@ -115,6 +127,11 @@ export const ticketsApi = {
 
   respond: async (id: number, message: string): Promise<{ message: string }> => {
     const response = await api.post(`/tickets/${id}/respond/`, { message });
+    return response.data;
+  },
+
+  appeal: async (id: number, reason: string): Promise<{ message: string }> => {
+    const response = await api.post(`/tickets/${id}/appeal/`, { reason });
     return response.data;
   },
 };
@@ -165,8 +182,11 @@ export const agentApi = {
     return response.data;
   },
 
-  approveTicket: async (id: number, reason?: string): Promise<{ message: string }> => {
-    const response = await api.post(`/agent/tickets/${id}/approve/`, { reason });
+  approveTicket: async (id: number, reason?: string, approvedAmount?: number): Promise<{ message: string }> => {
+    const response = await api.post(`/agent/tickets/${id}/approve/`, {
+      reason,
+      ...(approvedAmount != null ? { approved_amount: approvedAmount } : {}),
+    });
     return response.data;
   },
 
@@ -193,6 +213,31 @@ export const agentApi = {
   getStats: async (): Promise<AgentStats> => {
     const response = await api.get('/agent/tickets/stats/');
     return response.data;
+  },
+
+  getAnalytics: async (): Promise<AnalyticsData> => {
+    const response = await api.get('/agent/tickets/analytics/');
+    return response.data;
+  },
+};
+
+export const notificationsApi = {
+  list: async (): Promise<InAppNotification[]> => {
+    const response = await api.get('/notifications/');
+    return response.data;
+  },
+
+  unreadCount: async (): Promise<number> => {
+    const response = await api.get('/notifications/unread-count/');
+    return response.data.count;
+  },
+
+  markRead: async (id: number): Promise<void> => {
+    await api.post(`/notifications/${id}/mark-read/`);
+  },
+
+  markAllRead: async (): Promise<void> => {
+    await api.post('/notifications/mark-all-read/');
   },
 };
 

@@ -10,6 +10,7 @@ class Ticket(models.Model):
         ('pending_info', 'Pending Information'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('appealed', 'Appealed'),
     ]
 
     INCIDENT_TYPE_CHOICES = [
@@ -41,6 +42,7 @@ class Ticket(models.Model):
     incident_date = models.DateField()
     incident_location = models.CharField(max_length=300, blank=True)
     claim_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    approved_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -5,12 +5,15 @@ import { useAuthStore } from './store/authStore';
 import Login from './pages/Login';
 import AgentLogin from './pages/AgentLogin';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import LandingOrLayout from './components/LandingOrLayout';
 import CustomerDashboard from './pages/customer/Dashboard';
 import CustomerTicketCreate from './pages/customer/TicketCreate';
 import CustomerTicketDetail from './pages/customer/TicketDetail';
 import AgentDashboard from './pages/agent/Dashboard';
 import AgentTicketDetail from './pages/agent/TicketDetail';
+import AgentAnalytics from './pages/agent/Analytics';
 import Profile from './pages/Profile';
 import ChangePassword from './pages/ChangePassword';
 import Layout from './components/Layout';
@@ -60,10 +63,13 @@ function App() {
         }>
           <Route index element={<Navigate to="/agent/dashboard" replace />} />
           <Route path="dashboard" element={<AgentDashboard />} />
+          <Route path="analytics" element={<AgentAnalytics />} />
           <Route path="tickets/:id" element={<AgentTicketDetail />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

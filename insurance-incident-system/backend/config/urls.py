@@ -9,6 +9,8 @@ urlpatterns = [
     path('api/tickets/', include('apps.tickets.urls')),
     path('api/documents/', include('apps.documents.urls')),
     path('api/agent/', include('apps.tickets.agent_urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
+    path('api/ai/', include('apps.ai_services.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,10 +1,12 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import NotificationBell from './NotificationBell';
 import {
   HomeIcon,
   DocumentPlusIcon,
   ArrowRightOnRectangleIcon,
   UserCircleIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -22,6 +24,7 @@ export default function Layout({ isAgent = false }: LayoutProps) {
 
   const agentNavigation = [
     { name: 'Dashboard', href: '/agent/dashboard', icon: HomeIcon },
+    { name: 'Analytics', href: '/agent/analytics', icon: ChartBarIcon },
   ];
 
   const navigation = isAgent ? agentNavigation : customerNavigation;
@@ -60,6 +63,7 @@ export default function Layout({ isAgent = false }: LayoutProps) {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <NotificationBell isAgent={isAgent} />
               <Link
                 to={isAgent ? '/agent/profile' : '/profile'}
                 className="flex items-center gap-2 text-sm text-slate-300 hover:text-slate-100 transition-colors"

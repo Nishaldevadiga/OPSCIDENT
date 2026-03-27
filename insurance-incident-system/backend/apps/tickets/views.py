@@ -8,7 +8,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Ticket, TicketNote, StatusHistory
 from .serializers import (
     TicketListSerializer, TicketDetailSerializer, TicketCreateSerializer,
-    TicketNoteSerializer, CustomerResponseSerializer
+    TicketNoteSerializer, CustomerResponseSerializer, AppealSerializer
 )
 from apps.accounts.permissions import IsCustomer, IsOwnerOrAgent
 
@@ -78,3 +78,42 @@ class CustomerTicketViewSet(viewsets.ModelViewSet):
         make_ai_decision.delay(ticket.id)
 
         return Response({"message": "Response submitted successfully"})
+
+    @action(detail=True, methods=['post'])
+    def appeal(self, request, pk=None):
+        ticket = self.get_object()
+
+        if ticket.status != 'rejected':
+            return Response(
+                {"error": "Only rejected claims can be appealed."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = AppealSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        reason = serializer.validated_data['reason']
+
+        TicketNote.objects.create(
+            ticket=ticket,
+            author=request.user,
+            content=f"Appeal submitted: {reason}",
+            is_internal=False
+        )
+
+        old_status = ticket.status
+        ticket.status = 'appealed'
+        ticket.save()
+
+        StatusHistory.objects.create(
+            ticket=ticket,
+            old_status=old_status,
+            new_status='appealed',
+            changed_by=request.user,
+            reason=f"Customer submitted appeal: {reason}"
+        )
+
+        from apps.notifications.services import NotificationService
+        NotificationService.send_appeal_notification(ticket, reason)
+
+        return Response({"message": "Your appeal has been submitted. Our team will review it and get back to you."})

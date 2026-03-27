@@ -12,6 +12,7 @@ import {
   XCircleIcon,
   CpuChipIcon,
   ExclamationTriangleIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
 const statusFilters: { value: TicketStatus | 'all'; label: string }[] = [
@@ -19,6 +20,7 @@ const statusFilters: { value: TicketStatus | 'all'; label: string }[] = [
   { value: 'submitted', label: 'Submitted' },
   { value: 'processing', label: 'AI Processing' },
   { value: 'pending_info', label: 'Needs Review' },
+  { value: 'appealed', label: 'Appeals' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ];
@@ -69,7 +71,7 @@ export default function AgentDashboard() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 mb-6">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-6 mb-6">
           <div className="card overflow-hidden border-l-4 border-orange-500">
             <div className="p-5">
               <div className="flex items-center">
@@ -131,6 +133,24 @@ export default function AgentDashboard() {
                     <dt className="text-sm font-medium text-slate-500 truncate">Auto-Rejected</dt>
                     <dd className="text-lg font-semibold text-rose-400">
                       {stats.auto_rejected || 0}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={`card overflow-hidden ${stats.appeals_pending ? 'border-l-4 border-violet-500' : ''}`}>
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <ArrowPathIcon className="h-6 w-6 text-violet-400" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-slate-500 truncate">Appeals</dt>
+                    <dd className={`text-lg font-semibold ${stats.appeals_pending ? 'text-violet-400' : 'text-slate-100'}`}>
+                      {stats.appeals_pending || 0}
                     </dd>
                   </dl>
                 </div>

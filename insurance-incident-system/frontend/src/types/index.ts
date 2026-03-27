@@ -27,6 +27,7 @@ export interface Ticket {
   incident_date: string;
   incident_location?: string;
   claim_amount?: number;
+  approved_amount?: number | null;
   documents?: Document[];
   documents_count?: number;
   notes?: TicketNote[];
@@ -36,7 +37,7 @@ export interface Ticket {
   updated_at: string;
 }
 
-export type TicketStatus = 'submitted' | 'processing' | 'pending_info' | 'approved' | 'rejected';
+export type TicketStatus = 'submitted' | 'processing' | 'pending_info' | 'approved' | 'rejected' | 'appealed';
 
 export type IncidentType = 
   | 'vehicle_collision'
@@ -115,5 +116,42 @@ export interface AgentStats {
   ai_processing: number;
   auto_approved: number;
   auto_rejected: number;
+  appeals_pending: number;
   total_claim_amount: number;
+}
+
+export interface InAppNotification {
+  id: number;
+  ticket: number | null;
+  ticket_id: string | null;
+  title: string;
+  message: string;
+  notification_type: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface AnalyticsData {
+  kpis: {
+    total_claims: number;
+    approval_rate: number;
+    avg_processing_hours: number;
+    total_payout: number;
+  };
+  daily: {
+    date: string;
+    total: number;
+    approved: number;
+    rejected: number;
+  }[];
+  weekly: {
+    week: string;
+    approved: number;
+    rejected: number;
+    payout: number;
+  }[];
+  by_incident_type: {
+    incident_type: string;
+    count: number;
+  }[];
 }

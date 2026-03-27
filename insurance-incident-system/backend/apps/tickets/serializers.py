@@ -82,7 +82,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'ticket_id', 'customer', 'assigned_agent', 'status',
             'incident_type', 'title', 'description', 'incident_date',
-            'incident_location', 'claim_amount', 'documents', 'notes',
+            'incident_location', 'claim_amount', 'approved_amount', 'documents', 'notes',
             'status_history', 'ai_analysis', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'ticket_id', 'customer', 'created_at', 'updated_at']
@@ -111,6 +111,7 @@ class TicketCreateSerializer(serializers.ModelSerializer):
 
 class TicketStatusUpdateSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True)
+    approved_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
 
 
 class TicketInfoRequestSerializer(serializers.Serializer):
@@ -119,3 +120,7 @@ class TicketInfoRequestSerializer(serializers.Serializer):
 
 class CustomerResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
+
+
+class AppealSerializer(serializers.Serializer):
+    reason = serializers.CharField(min_length=20, max_length=2000)

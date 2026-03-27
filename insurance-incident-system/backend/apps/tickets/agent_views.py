@@ -35,8 +35,8 @@ class AgentTicketViewSet(viewsets.ReadOnlyModelViewSet):
         show_all = self.request.query_params.get('show_all', 'false').lower() == 'true'
         
         if not show_all and self.action == 'list':
-            # Show tickets needing review + AI processed; exclude in-progress
-            queryset = queryset.filter(status__in=['pending_info', 'approved', 'rejected'])
+            # Show tickets needing review + AI processed + appeals; exclude in-progress
+            queryset = queryset.filter(status__in=['pending_info', 'approved', 'rejected', 'appealed'])
         
         return queryset
 
@@ -61,14 +61,23 @@ class AgentTicketViewSet(viewsets.ReadOnlyModelViewSet):
         old_status = ticket.status
         ticket.status = 'approved'
         ticket.assigned_agent = request.user
+
+        approved_amount = serializer.validated_data.get('approved_amount')
+        if approved_amount is not None:
+            ticket.approved_amount = approved_amount
+
         ticket.save()
+
+        reason = serializer.validated_data.get('reason', '') or 'Claim approved by agent'
+        if approved_amount is not None:
+            reason = f"{reason} — Approved payout: ${approved_amount:,.2f}".strip(' —')
 
         StatusHistory.objects.create(
             ticket=ticket,
             old_status=old_status,
             new_status='approved',
             changed_by=request.user,
-            reason=serializer.validated_data.get('reason', 'Claim approved by agent')
+            reason=reason
         )
 
         NotificationService.send_status_change_notification(ticket)
@@ -163,8 +172,108 @@ class AgentTicketViewSet(viewsets.ReadOnlyModelViewSet):
             'ai_processing': Ticket.objects.filter(status__in=['submitted', 'processing']).count(),
             'auto_approved': Ticket.objects.filter(status='approved').count(),
             'auto_rejected': Ticket.objects.filter(status='rejected').count(),
+            'appeals_pending': Ticket.objects.filter(status='appealed').count(),
             'total_claim_amount': Ticket.objects.filter(status='approved').aggregate(
                 total=Sum('claim_amount')
             )['total'] or 0,
         }
         return Response(stats)
+
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        from django.db.models import Count, Sum, Q
+        from django.db.models.functions import TruncDay, TruncWeek
+        from django.utils import timezone
+        from datetime import timedelta
+
+        now = timezone.now()
+
+        # --- Daily submissions: last 30 days ---
+        thirty_days_ago = now - timedelta(days=29)
+        daily_qs = (
+            Ticket.objects
+            .filter(created_at__gte=thirty_days_ago)
+            .annotate(day=TruncDay('created_at'))
+            .values('day')
+            .annotate(
+                total=Count('id'),
+                approved=Count('id', filter=Q(status='approved')),
+                rejected=Count('id', filter=Q(status='rejected')),
+            )
+            .order_by('day')
+        )
+        daily_map = {str(d['day'].date()): d for d in daily_qs}
+        daily = []
+        for i in range(29, -1, -1):
+            day = (now - timedelta(days=i)).date()
+            key = str(day)
+            entry = daily_map.get(key, {})
+            daily.append({
+                'date': key,
+                'total': entry.get('total', 0),
+                'approved': entry.get('approved', 0),
+                'rejected': entry.get('rejected', 0),
+            })
+
+        # --- Weekly approvals vs rejections + payout: last 12 weeks ---
+        twelve_weeks_ago = now - timedelta(weeks=12)
+        weekly_qs = (
+            Ticket.objects
+            .filter(created_at__gte=twelve_weeks_ago)
+            .annotate(week=TruncWeek('created_at'))
+            .values('week')
+            .annotate(
+                approved=Count('id', filter=Q(status='approved')),
+                rejected=Count('id', filter=Q(status='rejected')),
+                payout=Sum('approved_amount', filter=Q(status='approved')),
+            )
+            .order_by('week')
+        )
+        weekly = [
+            {
+                'week': str(w['week'].date()),
+                'approved': w['approved'],
+                'rejected': w['rejected'],
+                'payout': float(w['payout'] or 0),
+            }
+            for w in weekly_qs
+        ]
+
+        # --- By incident type ---
+        by_type = list(
+            Ticket.objects
+            .values('incident_type')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+
+        # --- Avg processing time (hours) for closed tickets ---
+        closed = Ticket.objects.filter(status__in=['approved', 'rejected'])
+        avg_hours = 0.0
+        if closed.exists():
+            durations = [
+                (t.updated_at - t.created_at).total_seconds() / 3600
+                for t in closed.only('created_at', 'updated_at')
+            ]
+            avg_hours = round(sum(durations) / len(durations), 1)
+
+        # --- Overall KPIs ---
+        total = Ticket.objects.count()
+        total_decided = closed.count()
+        total_approved = Ticket.objects.filter(status='approved').count()
+        approval_rate = round(total_approved / total_decided * 100, 1) if total_decided else 0
+        total_payout = float(
+            Ticket.objects.filter(status='approved').aggregate(s=Sum('approved_amount'))['s'] or 0
+        )
+
+        return Response({
+            'kpis': {
+                'total_claims': total,
+                'approval_rate': approval_rate,
+                'avg_processing_hours': avg_hours,
+                'total_payout': total_payout,
+            },
+            'daily': daily,
+            'weekly': weekly,
+            'by_incident_type': by_type,
+        })

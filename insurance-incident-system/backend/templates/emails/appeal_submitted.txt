@@ -1,0 +1,24 @@
+Dear {{ user.first_name }},
+
+We have received your appeal for claim {{ ticket.ticket_id }}.
+
+Claim Details:
+--------------
+Ticket ID: {{ ticket.ticket_id }}
+Title: {{ ticket.title }}
+Incident Type: {{ ticket.get_incident_type_display }}
+
+Your Appeal:
+------------
+{{ appeal_reason }}
+
+What happens next:
+------------------
+Our claims team will review your appeal and the supporting information provided. You will be notified by email once a decision has been made. This process typically takes 3–5 business days.
+
+You can log into your account at any time to check the status of your appeal.
+
+If you have additional documents or evidence to support your appeal, please log in and upload them to your claim.
+
+Best regards,
+Insurance Claims Team
