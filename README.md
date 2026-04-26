@@ -1,4 +1,4 @@
-# Intelligent Incident Report Analyzer with AI
+# Opscident - Intelligent Incident Report Analyzer with AI
 
 An AI-powered full-stack insurance claims platform. Customers submit claims with photo/video evidence; the AI automatically analyses damage and approves or rejects in real time. Agents handle edge cases and monitor performance via an analytics dashboard.
 
