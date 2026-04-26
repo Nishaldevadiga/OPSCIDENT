@@ -1,3 +1,5 @@
+import csv
+from django.http import StreamingHttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -277,3 +279,98 @@ class AgentTicketViewSet(viewsets.ReadOnlyModelViewSet):
             'weekly': weekly,
             'by_incident_type': by_type,
         })
+
+    @action(detail=False, methods=['get'], url_path='analytics/export')
+    def analytics_export(self, request):
+        from django.db.models import Count, Sum, Q
+        from django.db.models.functions import TruncDay, TruncWeek
+        from django.utils import timezone
+        from datetime import timedelta
+
+        now = timezone.now()
+
+        def _iter_rows():
+            # --- KPI summary ---
+            closed = Ticket.objects.filter(status__in=['approved', 'rejected'])
+            total = Ticket.objects.count()
+            total_decided = closed.count()
+            total_approved = Ticket.objects.filter(status='approved').count()
+            approval_rate = round(total_approved / total_decided * 100, 1) if total_decided else 0
+            total_payout = float(
+                Ticket.objects.filter(status='approved').aggregate(s=Sum('approved_amount'))['s'] or 0
+            )
+            avg_hours = 0.0
+            if closed.exists():
+                durations = [
+                    (t.updated_at - t.created_at).total_seconds() / 3600
+                    for t in closed.only('created_at', 'updated_at')
+                ]
+                avg_hours = round(sum(durations) / len(durations), 1)
+
+            yield ['Section', 'Metric', 'Value']
+            yield ['KPIs', 'Total Claims', total]
+            yield ['KPIs', 'Approval Rate (%)', approval_rate]
+            yield ['KPIs', 'Avg Processing Time (hours)', avg_hours]
+            yield ['KPIs', 'Total Payout ($)', total_payout]
+            yield []
+
+            # --- Daily ---
+            yield ['Daily Submissions (last 30 days)', '', '']
+            yield ['Date', 'Total', 'Approved', 'Rejected']
+            thirty_days_ago = now - timedelta(days=29)
+            daily_qs = (
+                Ticket.objects
+                .filter(created_at__gte=thirty_days_ago)
+                .annotate(day=TruncDay('created_at'))
+                .values('day')
+                .annotate(
+                    total=Count('id'),
+                    approved=Count('id', filter=Q(status='approved')),
+                    rejected=Count('id', filter=Q(status='rejected')),
+                )
+                .order_by('day')
+            )
+            daily_map = {str(d['day'].date()): d for d in daily_qs}
+            for i in range(29, -1, -1):
+                day = (now - timedelta(days=i)).date()
+                entry = daily_map.get(str(day), {})
+                yield [str(day), entry.get('total', 0), entry.get('approved', 0), entry.get('rejected', 0)]
+            yield []
+
+            # --- Weekly ---
+            yield ['Weekly Summary (last 12 weeks)', '', '', '']
+            yield ['Week Start', 'Approved', 'Rejected', 'Payout ($)']
+            twelve_weeks_ago = now - timedelta(weeks=12)
+            weekly_qs = (
+                Ticket.objects
+                .filter(created_at__gte=twelve_weeks_ago)
+                .annotate(week=TruncWeek('created_at'))
+                .values('week')
+                .annotate(
+                    approved=Count('id', filter=Q(status='approved')),
+                    rejected=Count('id', filter=Q(status='rejected')),
+                    payout=Sum('approved_amount', filter=Q(status='approved')),
+                )
+                .order_by('week')
+            )
+            for w in weekly_qs:
+                yield [str(w['week'].date()), w['approved'], w['rejected'], float(w['payout'] or 0)]
+            yield []
+
+            # --- By incident type ---
+            yield ['Claims by Incident Type', '']
+            yield ['Incident Type', 'Count']
+            for row in Ticket.objects.values('incident_type').annotate(count=Count('id')).order_by('-count'):
+                yield [row['incident_type'], row['count']]
+
+        class _Echo:
+            def write(self, value):
+                return value
+
+        writer = csv.writer(_Echo())
+        response = StreamingHttpResponse(
+            (writer.writerow(row) for row in _iter_rows()),
+            content_type='text/csv',
+        )
+        response['Content-Disposition'] = 'attachment; filename="analytics.csv"'
+        return response

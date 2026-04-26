@@ -222,6 +222,16 @@ export const agentApi = {
     const response = await api.get('/agent/tickets/analytics/');
     return response.data;
   },
+
+  exportAnalyticsCsv: async (): Promise<void> => {
+    const response = await api.get('/agent/tickets/analytics/export/', { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 export const aiApi = {

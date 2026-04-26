@@ -8,6 +8,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import {
+  ArrowDownTrayIcon,
   ChartBarIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -44,6 +45,7 @@ export default function AgentAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     agentApi.getAnalytics()
@@ -51,6 +53,15 @@ export default function AgentAnalytics() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await agentApi.exportAnalyticsCsv();
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -92,9 +103,19 @@ export default function AgentAnalytics() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-50">Analytics</h1>
-        <p className="mt-1 text-sm text-slate-400">Claims performance overview</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-50">Analytics</h1>
+          <p className="mt-1 text-sm text-slate-400">Claims performance overview</p>
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-sm font-medium text-white transition-colors"
+        >
+          <ArrowDownTrayIcon className="h-4 w-4" />
+          {exporting ? 'Exporting…' : 'Export CSV'}
+        </button>
       </div>
 
       {/* KPI cards */}
