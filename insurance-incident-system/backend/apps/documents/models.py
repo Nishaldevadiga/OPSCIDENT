@@ -13,6 +13,7 @@ class Document(models.Model):
     FILE_TYPE_CHOICES = [
         ('pdf', 'PDF'),
         ('image', 'Image'),
+        ('video', 'Video'),
     ]
 
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='documents')

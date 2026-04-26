@@ -50,7 +50,7 @@ export type IncidentType =
 export interface Document {
   id: number;
   ticket: number;
-  file_type: 'pdf' | 'image';
+  file_type: 'pdf' | 'image' | 'video';
   original_filename: string;
   file_size: number;
   file_url: string;

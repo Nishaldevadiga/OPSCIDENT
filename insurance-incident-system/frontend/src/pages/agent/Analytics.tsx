@@ -248,7 +248,7 @@ export default function AgentAnalytics() {
                   </Pie>
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(value: number) => [value, 'Claims']}
+                    formatter={(value) => [Number(value ?? 0), 'Claims']}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -296,7 +296,7 @@ export default function AgentAnalytics() {
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, 'Payout']}
+                formatter={(value) => [`$${Number(value ?? 0).toLocaleString()}`, 'Payout']}
               />
               <Bar dataKey="payout" name="Payout" fill="url(#gradPayout)" radius={[3, 3, 0, 0]} />
             </BarChart>

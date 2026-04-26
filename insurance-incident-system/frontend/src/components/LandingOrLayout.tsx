@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import Home from '../pages/Home';
 import Layout from './Layout';
@@ -20,9 +20,5 @@ export default function LandingOrLayout() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return (
-    <Layout>
-      <Outlet />
-    </Layout>
-  );
+  return <Layout />;
 }

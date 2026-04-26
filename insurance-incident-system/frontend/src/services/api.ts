@@ -11,7 +11,10 @@ import type {
   InAppNotification,
 } from '../types';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.length > 0
+    ? import.meta.env.VITE_API_BASE_URL
+    : '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -217,6 +220,16 @@ export const agentApi = {
 
   getAnalytics: async (): Promise<AnalyticsData> => {
     const response = await api.get('/agent/tickets/analytics/');
+    return response.data;
+  },
+};
+
+export const aiApi = {
+  chat: async (
+    message: string,
+    history: { role: 'user' | 'assistant'; content: string }[],
+  ): Promise<{ reply: string }> => {
+    const response = await api.post('/ai/chat/', { message, history });
     return response.data;
   },
 };

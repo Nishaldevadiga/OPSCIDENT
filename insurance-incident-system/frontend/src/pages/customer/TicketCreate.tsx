@@ -135,12 +135,12 @@ export default function TicketCreate() {
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const hasImage = files.some((f) => f.type.startsWith('image/'));
+  const hasVisualEvidence = files.some((f) => f.type.startsWith('image/') || f.type.startsWith('video/'));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.incident_type) { toast.error('Please select an incident type'); return; }
-    if (!hasImage) { toast.error('At least one image of the damage is required'); return; }
+    if (!hasVisualEvidence) { toast.error('Please add at least one photo or video showing the damage'); return; }
 
     setLoading(true);
     try {
@@ -210,16 +210,16 @@ export default function TicketCreate() {
             )}
           </div>
           <p className="text-sm text-slate-400 mb-4">
-            <span className="text-rose-400 font-medium">At least one damage photo is required.</span>{' '}
+            <span className="text-rose-400 font-medium">At least one photo or video of the damage is required.</span>{' '}
             You may also attach police reports, receipts, or other PDFs as supporting documents.
           </p>
           <FileUpload files={files} onFilesChange={handleFilesChange} disabled={loading} />
-          {files.length > 0 && !hasImage && (
+          {files.length > 0 && !hasVisualEvidence && (
             <p className="mt-2 text-xs text-rose-400 flex items-center gap-1">
               <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              Please add at least one image (JPEG or PNG) showing the damage.
+              Please add at least one photo (JPEG or PNG) or video (MP4, MOV) showing the damage.
             </p>
           )}
         </div>
@@ -317,7 +317,7 @@ export default function TicketCreate() {
           <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary" disabled={loading}>
             Cancel
           </button>
-          <button type="submit" className="btn-primary" disabled={loading || extracting || !hasImage}>
+          <button type="submit" className="btn-primary" disabled={loading || extracting || !hasVisualEvidence}>
             {loading
               ? <><LoadingSpinner size="sm" /><span className="ml-2">Submitting…</span></>
               : 'Submit Claim'}

@@ -6,11 +6,13 @@ import type { Ticket, TicketStatus } from '../../types';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FileUpload from '../../components/FileUpload';
+import LiveStatusTracker from '../../components/LiveStatusTracker';
 import { format } from 'date-fns';
 import {
   ArrowLeftIcon,
   DocumentTextIcon,
   PhotoIcon,
+  FilmIcon,
   ClockIcon,
   CpuChipIcon,
   CheckCircleIcon,
@@ -202,15 +204,21 @@ export default function CustomerTicketDetail() {
         })()}
 
         {!ticket.ai_analysis && ['submitted', 'processing'].includes(ticket.status) && (
-          <div className="px-6 py-4 border-t border-slate-700 bg-sky-500/10">
-            <div className="flex items-center">
-              <CpuChipIcon className="h-6 w-6 text-sky-400 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-sky-300">AI Analysis in Progress</h3>
-                <p className="text-sm text-slate-400">Our AI is analyzing your documents. This usually takes a few moments.</p>
+          <>
+            <div className="px-6 py-4 border-t border-slate-700 bg-sky-500/10">
+              <div className="flex items-center">
+                <CpuChipIcon className="h-6 w-6 text-sky-400 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-sky-300">AI Analysis in Progress</h3>
+                  <p className="text-sm text-slate-400">Our AI is analyzing your documents. This usually takes a few moments.</p>
+                </div>
               </div>
             </div>
-          </div>
+            <LiveStatusTracker
+              ticketId={ticket.id}
+              onStatusChange={() => loadTicket()}
+            />
+          </>
         )}
 
         {ticket.documents && ticket.documents.length > 0 && (
@@ -219,8 +227,14 @@ export default function CustomerTicketDetail() {
             <ul className="divide-y divide-slate-700 border border-slate-700 rounded-xl overflow-hidden">
               {ticket.documents.map((doc) => (
                 <li key={doc.id} className="flex items-center py-3 px-4 bg-slate-800/30">
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${doc.file_type === 'pdf' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
-                    {doc.file_type === 'pdf' ? <DocumentTextIcon className="h-5 w-5" /> : <PhotoIcon className="h-5 w-5" />}
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                    doc.file_type === 'pdf' ? 'bg-rose-500/20 text-rose-400' :
+                    doc.file_type === 'video' ? 'bg-violet-500/20 text-violet-400' :
+                    'bg-sky-500/20 text-sky-400'
+                  }`}>
+                    {doc.file_type === 'pdf' ? <DocumentTextIcon className="h-5 w-5" /> :
+                     doc.file_type === 'video' ? <FilmIcon className="h-5 w-5" /> :
+                     <PhotoIcon className="h-5 w-5" />}
                   </div>
                   <div className="ml-3 flex-1">
                     <p className="text-sm font-medium text-slate-200">{doc.original_filename}</p>

@@ -28,6 +28,7 @@ yarn-error.log
 .env
 .env.local
 .env.*.local
+deploy/.env.deploy
 
 # IDE
 .idea/

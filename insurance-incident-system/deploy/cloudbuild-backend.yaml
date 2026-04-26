@@ -1,0 +1,11 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE}'
+      - '-f'
+      - 'backend/Dockerfile.cloudrun'
+      - 'backend'
+images:
+  - '${_IMAGE}'

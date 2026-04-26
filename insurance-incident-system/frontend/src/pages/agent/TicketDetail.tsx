@@ -6,11 +6,13 @@ import { agentApi } from '../../services/api';
 import type { Ticket } from '../../types';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import FraudRiskPanel from '../../components/FraudRiskPanel';
 import { format } from 'date-fns';
 import {
   ArrowLeftIcon,
   DocumentTextIcon,
   PhotoIcon,
+  FilmIcon,
   CheckCircleIcon,
   XCircleIcon,
   InformationCircleIcon,
@@ -118,6 +120,7 @@ export default function AgentTicketDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+
           <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-700">
               <div className="flex items-center justify-between">
@@ -184,10 +187,14 @@ export default function AgentTicketDetail() {
                       className="flex items-center p-3 border border-slate-600 rounded-xl hover:bg-slate-800/50 transition-colors"
                     >
                       <div className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center ${
-                        doc.file_type === 'pdf' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'
+                        doc.file_type === 'pdf' ? 'bg-rose-500/20 text-rose-400' :
+                        doc.file_type === 'video' ? 'bg-violet-500/20 text-violet-400' :
+                        'bg-sky-500/20 text-sky-400'
                       }`}>
                         {doc.file_type === 'pdf' ? (
                           <DocumentTextIcon className="h-5 w-5" />
+                        ) : doc.file_type === 'video' ? (
+                          <FilmIcon className="h-5 w-5" />
                         ) : (
                           <PhotoIcon className="h-5 w-5" />
                         )}
@@ -240,10 +247,18 @@ export default function AgentTicketDetail() {
         <div className="space-y-6">
           {analysis && (
             <div className="card overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-700 bg-gradient-to-r from-primary-500/10 to-sky-500/10">
-                <div className="flex items-center">
-                  <SparklesIcon className="h-5 w-5 text-primary-400 mr-2" />
-                  <h3 className="text-sm font-medium text-slate-200">AI Analysis</h3>
+              <div className={`px-4 py-3 border-b border-slate-700 ${analysis.fraud_indicators?.length ? 'bg-gradient-to-r from-rose-500/10 to-orange-500/10' : 'bg-gradient-to-r from-primary-500/10 to-sky-500/10'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <SparklesIcon className="h-5 w-5 text-primary-400 mr-2" />
+                    <h3 className="text-sm font-medium text-slate-200">AI Analysis</h3>
+                  </div>
+                  {analysis.fraud_indicators?.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                      <ExclamationTriangleIcon className="h-3 w-3" />
+                      {analysis.fraud_indicators.length} flag{analysis.fraud_indicators.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="px-4 py-4 space-y-4">
@@ -327,9 +342,14 @@ export default function AgentTicketDetail() {
                   </div>
                 )}
 
-                <div className="flex items-center text-xs text-slate-500 pt-2 border-t border-slate-700">
-                  <span className={`w-2 h-2 rounded-full mr-1 ${analysis.is_complete ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                  {analysis.is_complete ? 'Analysis complete' : 'Analysis in progress'}
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-700">
+                  <div className="flex items-center">
+                    <span className={`w-2 h-2 rounded-full mr-1 ${analysis.is_complete ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                    {analysis.is_complete ? 'Analysis complete' : 'Analysis in progress'}
+                  </div>
+                  <a href="#fraud-panel" className="text-primary-400 hover:text-primary-300 transition-colors">
+                    Full report ↓
+                  </a>
                 </div>
               </div>
             </div>
@@ -374,6 +394,13 @@ export default function AgentTicketDetail() {
           )}
         </div>
       </div>
+
+      {/* ── Fraud Risk Panel ── */}
+      {analysis && (
+        <div id="fraud-panel">
+          <FraudRiskPanel analysis={analysis} ticket={ticket} />
+        </div>
+      )}
 
       <Transition appear show={modalOpen !== null} as={Fragment}>
         <Dialog as="div" className="relative z-10" onClose={() => setModalOpen(null)}>

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { CloudArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CloudArrowUpIcon, XMarkIcon, FilmIcon } from '@heroicons/react/24/outline';
 
 interface FileUploadProps {
   files: File[];
@@ -21,9 +21,12 @@ export default function FileUpload({ files, onFilesChange, maxFiles = 10, disabl
       'application/pdf': ['.pdf'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
+      'video/mp4': ['.mp4'],
+      'video/quicktime': ['.mov'],
+      'video/webm': ['.webm'],
     },
     disabled,
-    maxSize: 10 * 1024 * 1024,
+    maxSize: 100 * 1024 * 1024,  // 100 MB to cover videos
   });
 
   const removeFile = (index: number) => {
@@ -53,7 +56,7 @@ export default function FileUpload({ files, onFilesChange, maxFiles = 10, disabl
           {isDragActive ? 'Drop the files here...' : 'Drag & drop files here, or click to select'}
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          <span className="text-rose-400/80">Image required</span> · PDF optional · JPEG, PNG, PDF up to 10MB
+          JPEG, PNG, PDF up to 10 MB · MP4, MOV, WebM video up to 100 MB
         </p>
       </div>
 
@@ -63,11 +66,17 @@ export default function FileUpload({ files, onFilesChange, maxFiles = 10, disabl
             <li key={index} className="flex items-center justify-between py-3 px-4 bg-slate-800/50">
               <div className="flex items-center min-w-0">
                 <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
-                  file.type === 'application/pdf' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'
+                  file.type === 'application/pdf' ? 'bg-rose-500/20 text-rose-400' :
+                  file.type.startsWith('video/') ? 'bg-violet-500/20 text-violet-400' :
+                  'bg-sky-500/20 text-sky-400'
                 }`}>
-                  <span className="text-xs font-medium uppercase">
-                    {file.type === 'application/pdf' ? 'PDF' : 'IMG'}
-                  </span>
+                  {file.type.startsWith('video/') ? (
+                    <FilmIcon className="h-5 w-5" />
+                  ) : (
+                    <span className="text-xs font-medium uppercase">
+                      {file.type === 'application/pdf' ? 'PDF' : 'IMG'}
+                    </span>
+                  )}
                 </div>
                 <div className="ml-3 min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">{file.name}</p>

@@ -14,6 +14,7 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
+    'daphne',  # must be before django.contrib.staticfiles for ASGI runserver
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'storages',
+    'channels',
     # Local apps
     'apps.accounts',
     'apps.tickets',
@@ -64,9 +66,42 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+# Django Channels — Redis in production-like setups; in-memory for simple Cloud Run (no Redis cost).
+# Note: InMemoryChannelLayer does not work across multiple instances; set REDIS_URL for scaling >1 with WS.
+if os.getenv('CHANNEL_LAYER_INMEMORY', 'False').lower() == 'true':
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [os.getenv('REDIS_URL', 'redis://localhost:6379/1')],
+                'capacity': 1500,
+            },
+        },
+    }
 
 # Database
-if os.getenv('DB_HOST'):
+_cloud_sql_conn = os.getenv('CLOUD_SQL_CONNECTION_NAME')  # e.g. project:region:instance
+if _cloud_sql_conn:
+    # Cloud Run → Cloud SQL via Unix socket (no DB_HOST needed)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'insurance_db'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': f'/cloudsql/{_cloud_sql_conn}',
+            'PORT': '',
+        }
+    }
+elif os.getenv('DB_HOST'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -223,5 +258,10 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@insurance-system.c
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
 # File upload settings
-MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024   # 10 MB  (images & PDFs)
+MAX_VIDEO_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB (videos)
+ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'image/jpeg', 'image/png', 'image/jpg',
+    'video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo',
+]

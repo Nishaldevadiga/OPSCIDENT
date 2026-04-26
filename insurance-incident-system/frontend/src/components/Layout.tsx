@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import NotificationBell from './NotificationBell';
+import ChatWidget from './ChatWidget';
 import {
   HomeIcon,
   DocumentPlusIcon,
@@ -89,6 +90,9 @@ export default function Layout({ isAgent = false }: LayoutProps) {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <Outlet />
       </main>
+
+      {/* Chat widget — customers only */}
+      {!isAgent && <ChatWidget />}
     </div>
   );
 }

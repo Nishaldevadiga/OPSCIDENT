@@ -1,7 +1,23 @@
 from celery import shared_task
 from celery.utils.log import get_task_logger
+from asgiref.sync import async_to_sync
 
 logger = get_task_logger(__name__)
+
+
+def _emit_ws(ticket_id, step, message, status=None):
+    """Push a live-update event to the ticket's WebSocket group."""
+    try:
+        from channels.layers import get_channel_layer
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
+        payload = {'type': 'ticket.update', 'step': step, 'message': message}
+        if status:
+            payload['status'] = status
+        async_to_sync(channel_layer.group_send)(f'ticket_{ticket_id}', payload)
+    except Exception as exc:
+        logger.warning(f'WS emit failed for ticket {ticket_id}: {exc}')
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -31,13 +47,22 @@ def process_document(self, document_id, analyze_only=False):
                 new_status='processing',
                 reason='AI analysis started'
             )
+            _emit_ws(ticket.id, 'processing_start', 'Claim received — starting AI analysis', status='processing')
 
         service = AIAnalysisService()
 
         if document.file_type == 'pdf':
+            _emit_ws(ticket.id, 'reading_document', 'Reading and extracting text from your documents…')
             service.analyze_pdf(document)
+            _emit_ws(ticket.id, 'reading_document_done', 'Document text extracted successfully')
+        elif document.file_type == 'video':
+            _emit_ws(ticket.id, 'analyzing_image', 'Extracting frames and analyzing your video…')
+            service.analyze_video(document)
+            _emit_ws(ticket.id, 'analyzing_image_done', 'Video analysis complete')
         else:
+            _emit_ws(ticket.id, 'analyzing_image', 'Analyzing photos and visual evidence…')
             service.analyze_image(document)
+            _emit_ws(ticket.id, 'analyzing_image_done', 'Image analysis complete')
 
         logger.info(f"Document {document_id} processed successfully")
 
@@ -76,12 +101,20 @@ def make_ai_decision(self, ticket_id):
             return
 
         logger.info(f"AI making decision for ticket {ticket.ticket_id}")
+        _emit_ws(ticket.id, 'fraud_checking', 'Running fraud detection checks…')
 
         service = AIAnalysisService()
+        _emit_ws(ticket.id, 'making_decision', 'AI is weighing evidence and making a decision…')
         result = service.generate_recommendation_and_decide(ticket)
 
         if result:
             logger.info(f"AI Decision for {ticket.ticket_id}: {result['recommendation']} (confidence: {result['confidence']})")
+            _emit_ws(
+                ticket.id,
+                'decided',
+                f"Decision reached: {result['recommendation'].replace('_', ' ').title()}",
+                status=ticket.status,
+            )
 
     except Ticket.DoesNotExist:
         logger.error(f"Ticket {ticket_id} not found")
