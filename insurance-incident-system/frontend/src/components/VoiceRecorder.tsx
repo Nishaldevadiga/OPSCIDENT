@@ -7,6 +7,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from './LoadingSpinner';
+import { API_BASE_URL } from '../services/api';
 
 type RecorderState = 'idle' | 'recording' | 'processing' | 'done' | 'error';
 
@@ -115,7 +116,7 @@ export default function VoiceRecorder({ onFieldsExtracted, disabled }: Props) {
           formData.append('audio', blob, `voice-claim.${ext}`);
 
           const token = localStorage.getItem('access_token');
-          const response = await fetch('/api/ai/transcribe/', {
+          const response = await fetch(`${API_BASE_URL}/ai/transcribe/`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token ?? ''}` },
             body: formData,

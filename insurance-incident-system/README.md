@@ -8,8 +8,9 @@ An AI-powered full-stack insurance claims platform. Customers submit claims with
 
 | Service | URL |
 |---|---|
-| Frontend | https://opscident-frontend-fub7qcja5q-uc.a.run.app |
-| Backend API | https://opscident-backend-fub7qcja5q-uc.a.run.app |
+| Frontend | https://opscident-frontend-529242007131.us-central1.run.app |
+| Backend API | https://opscident-backend-529242007131.us-central1.run.app |
+| Health check | https://opscident-backend-529242007131.us-central1.run.app/health/ |
 
 **Agent portal login**
 - URL: `/agent/login`
@@ -269,6 +270,23 @@ Or set `INITIAL_AGENT_EMAIL` / `INITIAL_AGENT_PASSWORD` in `.env.deploy` — the
 | GET | `/api/tickets/{id}/` | Ticket detail + AI analysis |
 | POST | `/api/tickets/{id}/respond/` | Submit additional info |
 
+### Health
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health/` | Service health — DB connection + Groq key status |
+
+Response (HTTP 200 when healthy, 503 when degraded):
+```json
+{
+  "status": "ok",
+  "services": {
+    "database": "ok",
+    "groq": "configured"
+  },
+  "response_ms": 40.7
+}
+```
+
 ### Agent
 | Method | Endpoint | Description |
 |---|---|---|
@@ -279,6 +297,7 @@ Or set `INITIAL_AGENT_EMAIL` / `INITIAL_AGENT_PASSWORD` in `.env.deploy` — the
 | POST | `/api/agent/tickets/{id}/notes/` | Add note |
 | GET | `/api/agent/tickets/stats/` | Dashboard stats |
 | GET | `/api/agent/tickets/analytics/` | Full analytics data |
+| GET | `/api/agent/tickets/analytics/export/` | Download analytics as CSV |
 
 ### Documents & AI
 | Method | Endpoint | Description |

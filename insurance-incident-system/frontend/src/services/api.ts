@@ -11,7 +11,7 @@ import type {
   InAppNotification,
 } from '../types';
 
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.length > 0
     ? import.meta.env.VITE_API_BASE_URL
     : '/api';
