@@ -8,8 +8,8 @@ An AI-powered full-stack insurance claims platform. Customers submit claims with
 
 | Service | URL |
 |---|---|
-| Frontend | https://opscident-frontend-fub7qcja5q-uc.a.run.app |
-| Backend API | https://opscident-backend-fub7qcja5q-uc.a.run.app |
+| Frontend | https://opscident-frontend-529242007131.us-central1.run.app |
+| Backend  |  https://opscident-backend-529242007131.us-central1.run.app/health/ |
 
 **Agent portal login**
 - URL: `/agent/login`
