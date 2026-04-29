@@ -320,6 +320,59 @@ Only populate fields you are confident about. Leave as empty string or null if n
             logger.error(f"Error analyzing PDF {document.id}: {e}")
             raise
 
+    @staticmethod
+    def _check_exif_authenticity(image_bytes: bytes) -> list:
+        """Return fraud indicators based on EXIF metadata absence.
+
+        Real camera photos (phone or DSLR) almost always contain EXIF tags for
+        camera make/model, datetime, and shooting settings. AI-generated images
+        (Gemini, DALL-E, Midjourney, Stable Diffusion, etc.) typically have no
+        EXIF at all, or only basic dimension data with no camera signature.
+        """
+        try:
+            from PIL import Image, ExifTags
+            import io
+            img = Image.open(io.BytesIO(image_bytes))
+
+            # Collect EXIF data
+            exif_data = {}
+            raw_exif = img._getexif() if hasattr(img, '_getexif') else None
+            if raw_exif:
+                exif_data = {ExifTags.TAGS.get(k, k): v for k, v in raw_exif.items()}
+
+            indicators = []
+
+            # Check 1: No EXIF at all
+            if not exif_data:
+                indicators.append('no_exif_metadata')
+
+            # Check 2: Missing camera make/model (most important signal)
+            has_camera = bool(exif_data.get('Make') or exif_data.get('Model'))
+            if not has_camera:
+                indicators.append('no_camera_signature')
+
+            # Check 3: Missing shooting settings (real cameras record these)
+            has_settings = bool(
+                exif_data.get('ISOSpeedRatings') or
+                exif_data.get('ExposureTime') or
+                exif_data.get('FNumber') or
+                exif_data.get('ShutterSpeedValue')
+            )
+            if not has_settings:
+                indicators.append('no_shooting_settings')
+
+            # Check 4: Dimensions that match common AI output sizes
+            width, height = img.size
+            ai_sizes = {512, 768, 1024, 1280, 1344, 1536, 2048, 2816}
+            if width in ai_sizes or height in ai_sizes:
+                indicators.append('ai_typical_dimensions')
+
+            return indicators
+
+        except Exception as e:
+            logger.warning(f"EXIF check failed: {e}")
+            return []
+
     def analyze_image(self, document):
         """Analyze an image for damage assessment and verify it matches the claim description."""
         from apps.ai_services.models import AIAnalysis
@@ -329,6 +382,12 @@ Only populate fields you are confident about. Leave as empty string or null if n
         try:
             file_content = document.file.read()
             document.file.seek(0)
+
+            # --- EXIF authenticity check (runs on raw bytes before resizing) ---
+            exif_flags = self._check_exif_authenticity(file_content)
+            # 3+ missing-metadata signals = strong evidence of AI generation
+            exif_ai_generated = len(exif_flags) >= 3
+            logger.info(f"EXIF flags for doc {document.id}: {exif_flags} | ai_generated={exif_ai_generated}")
 
             image = Image.open(io.BytesIO(file_content))
             if image.mode != 'RGB':
@@ -398,6 +457,17 @@ Provide your analysis as JSON with these fields:
 Respond ONLY with valid JSON, no other text."""
 
             image_analysis = self.groq_client.analyze_image(image_base64, prompt)
+
+            # Merge EXIF-based AI detection into the vision result
+            if exif_ai_generated:
+                existing = image_analysis.get('fraud_indicators') or []
+                if 'ai_generated_image' not in existing:
+                    existing.append('ai_generated_image')
+                image_analysis['fraud_indicators'] = existing
+                image_analysis['consistency_notes'] = (
+                    (image_analysis.get('consistency_notes') or '') +
+                    f' EXIF signals missing ({", ".join(exif_flags)}) — likely AI-generated.'
+                ).strip()
 
             analysis, created = AIAnalysis.objects.get_or_create(
                 ticket=document.ticket,
@@ -699,6 +769,17 @@ Respond ONLY with valid JSON, no other text."""
         # Auto-reject AI-generated images regardless of fraud_count
         ai_generated = 'ai_generated_image' in fraud_indicators
 
+        # Check if claimed amount is inflated vs AI estimate
+        # Only applies when we have a reliable damage estimate (images analyzed, score > 0)
+        claimed = float(ticket.claim_amount) if ticket.claim_amount else 0.0
+        amount_inflated = (
+            has_images and
+            amt_max > 0 and
+            claimed > 0 and
+            claimed > amt_max * 1.5  # claimed is more than 150% of AI max estimate
+        )
+        inflation_ratio = round(claimed / amt_max, 1) if amt_max > 0 else 0
+
         # Decision Logic
         if ai_generated or fraud_count >= 2:
             # HIGH FRAUD RISK - Auto reject
@@ -724,6 +805,23 @@ Respond ONLY with valid JSON, no other text."""
                     f"Auto-rejected: {fraud_count} fraud indicator(s) detected — "
                     + ', '.join(fraud_indicators[:3])
                 )
+
+        elif amount_inflated:
+            # INFLATED CLAIM - Claimed amount far exceeds AI damage estimate
+            recommendation = 'reject'
+            new_status = 'rejected'
+            confidence = 0.88
+            reason = (
+                f"The amount claimed (${claimed:,.2f}) significantly exceeds our assessment of the damage "
+                f"based on the submitted evidence. Our evaluation estimates the maximum repair/replacement "
+                f"cost at approximately ${amt_max:,.2f}. "
+                "If you have professional repair estimates or invoices supporting your claimed amount, "
+                "please contact our support team with that documentation."
+            )
+            analysis.analysis_summary = (
+                f"Rejected: claimed ${claimed:,.2f} is {inflation_ratio}x the AI estimated maximum "
+                f"(${amt_max:,.2f}). Possible inflated claim."
+            )
 
         elif not has_images and ticket.incident_type in ['vehicle_collision', 'property_damage', 'vehicle_theft']:
             # NEED MORE INFO - No damage photos for damage-related claims
