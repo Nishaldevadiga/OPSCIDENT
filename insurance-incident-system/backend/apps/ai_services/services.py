@@ -349,13 +349,27 @@ Only populate fields you are confident about. Leave as empty string or null if n
 IMPORTANT: The customer has submitted this claim:
 {claim_context}
 
-STEP 1 — VERIFY OBJECT TYPE (strict):
+STEP 1 — DETECT AI-GENERATED / SYNTHETIC IMAGE (highest priority):
+Look carefully for signs that this image was created by an AI image generator (DALL-E, Midjourney, Stable Diffusion, ChatGPT image, etc.) rather than taken by a real camera. Key indicators:
+- Unnaturally perfect or studio-like lighting with no realistic shadows
+- Skin, metal, or paint textures that look rendered rather than photographed
+- Background objects that are blurry, distorted, or physically impossible
+- Text, logos, or license plates that are garbled, misspelled, or illegible
+- Damage that looks "painted on" — too clean, too symmetric, or geometrically perfect
+- Missing authentic environmental context (no reflections, no road grime, no surroundings)
+- Edges between objects that look blended or dreamlike rather than sharp
+- Repeating patterns or hallucinated objects that don't belong
+- The scene looks more like a 3D render or concept art than a real photo
+- File lacks photographic noise/grain typical of a phone camera
+If you detect 2 or more of these signals, add "ai_generated_image" to fraud_indicators.
+
+STEP 2 — VERIFY OBJECT TYPE (strict):
 - If the claim mentions "bike", "bicycle", "motorcycle", "scooter", or "two-wheeler" but the image shows a CAR → MISMATCH.
 - If the claim mentions "car", "automobile", or four-wheeled vehicle but the image shows a BIKE → MISMATCH.
 - If the claim mentions "house" or "property" but the image shows a vehicle → MISMATCH.
 - If the object type clearly matches (car claim → car in photo), set matches_claim_description to true.
 
-STEP 2 — ASSESS DAMAGE (be decisive, not conservative):
+STEP 3 — ASSESS DAMAGE (be decisive, not conservative):
 - If there is ANY visible physical damage, score it using these MINIMUM values:
   - Any scratch, scuff, or paint transfer: at least 20
   - Small dent, crack, or broken plastic: at least 35
@@ -366,16 +380,17 @@ STEP 2 — ASSESS DAMAGE (be decisive, not conservative):
 - For vehicle collision claims: any visible collision damage on the correct vehicle = matches_claim_description true.
   You do NOT need to verify which specific panel was mentioned — any collision damage on the vehicle counts.
 
-STEP 3 — FRAUD CHECK:
-- Only flag fraud_indicators for: stock photos, digitally manipulated images, obvious fake damage, completely undamaged vehicle.
-- Do NOT flag as fraud just because a specific body panel isn't labeled identically to the claim text.
+STEP 4 — OTHER FRAUD CHECKS:
+- Flag stock_photo if the image is clearly a stock/marketing photo with no real incident context.
+- Flag digitally_manipulated if damage appears to be edited/composited onto an otherwise undamaged vehicle.
+- Do NOT flag fraud just because a specific body panel isn't labeled identically to the claim text.
 
 Provide your analysis as JSON with these fields:
 - damage_description: Detailed description of visible damage
 - damage_severity: Score from 0-100 (0=no damage, 100=total loss). Be accurate — visible damage must score ≥ 30.
 - damage_areas: List of affected areas
 - estimated_repair_type: minor_repair, major_repair, or replacement
-- fraud_indicators: List only genuine fraud signals (empty list if none)
+- fraud_indicators: List genuine fraud signals detected. Use exact strings: "ai_generated_image", "stock_photo", "digitally_manipulated". Empty list if none.
 - matches_claim_description: true or false — only false if object TYPE is wrong or image is completely unrelated
 - consistency_notes: Brief explanation
 - confidence: Your confidence score 0-1
@@ -681,22 +696,34 @@ Respond ONLY with valid JSON, no other text."""
             analysis.claim_amount_min = amt_min
             analysis.claim_amount_max = amt_max
 
+        # Auto-reject AI-generated images regardless of fraud_count
+        ai_generated = 'ai_generated_image' in fraud_indicators
+
         # Decision Logic
-        if fraud_count >= 2:
+        if ai_generated or fraud_count >= 2:
             # HIGH FRAUD RISK - Auto reject
             recommendation = 'reject'
             new_status = 'rejected'
             confidence = 0.95
-            reason = (
-                "After carefully reviewing your claim and the submitted documentation, "
-                "our assessment was unable to verify the incident or damage as described. "
-                "If you believe this outcome is incorrect, please contact our support team "
-                "with any additional evidence or documentation."
-            )
-            analysis.analysis_summary = (
-                f"Auto-rejected: {fraud_count} fraud indicator(s) detected — "
-                + ', '.join(fraud_indicators[:3])
-            )
+            if ai_generated:
+                reason = (
+                    "Our system has determined that one or more of the submitted images appear to be "
+                    "AI-generated or synthetically created rather than authentic photographs of real damage. "
+                    "We require original, unedited photographs taken at the time of the incident. "
+                    "If you believe this is an error, please contact our support team with the original image files."
+                )
+                analysis.analysis_summary = "Auto-rejected: submitted image detected as AI-generated/synthetic."
+            else:
+                reason = (
+                    "After carefully reviewing your claim and the submitted documentation, "
+                    "our assessment was unable to verify the incident or damage as described. "
+                    "If you believe this outcome is incorrect, please contact our support team "
+                    "with any additional evidence or documentation."
+                )
+                analysis.analysis_summary = (
+                    f"Auto-rejected: {fraud_count} fraud indicator(s) detected — "
+                    + ', '.join(fraud_indicators[:3])
+                )
 
         elif not has_images and ticket.incident_type in ['vehicle_collision', 'property_damage', 'vehicle_theft']:
             # NEED MORE INFO - No damage photos for damage-related claims
